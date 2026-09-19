@@ -11,6 +11,7 @@ dotenv.config({ path: path.resolve(__dirname, '.env.e2e') });
 
 export default defineConfig({
   testDir: './e2e',
+  reporter: 'html',
   fullyParallel: true,
   retries: 0,
   workers: 1,
