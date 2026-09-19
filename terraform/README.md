@@ -1,50 +1,41 @@
-# Terraform (IaC)
+# Terraform (Infrastructure as Code)
 
-## 1. 概要 (Overview)
-AWS 上に認証基盤やアプリケーション基盤（API Gateway, Lambda 等）を構築するための Terraform コード群です。
-現在（フェーズ1）は、Cognito User Pool および Managed Login のインフラ構築を行っています。
+このディレクトリには、プロジェクトのインフラを構築するための Terraform コードが格納されています。
 
----
+## ディレクトリ構成
 
-## 2. ディレクトリ構成 (Directory Structure)
+- `ecr/`: Docker コンテナイメージを格納するための Amazon ECR リポジトリを管理します。
+- `app/`: アプリケーションの本体（Cognito, Lambda, API Gateway, IAM 等）を管理します。
 
-```text
-terraform/
-├── README.md
-├── main.tf          # プロバイダー設定、Cognito User Pool 等のリソース定義
-└── outputs.tf       # apply 実行後に出力される変数の定義 (フロントエンド等で利用)
-```
+※ Lambda を構築する前に ECR にイメージが Push されている必要があるため、State を2つに分割しています。
 
-**リソース分割方針:**
-現在は小規模な POC であるため、プロバイダ設定や Cognito 関連リソースをすべて `main.tf` に統合し、セクション（コメントブロック）で分割して管理しています。今後の拡張に伴い、必要に応じてモジュール化やファイル分割を行います。
+## デプロイ手順
 
----
+初回デプロイ時は、以下の順序で実行する必要があります。
 
-## 3. 構築される主要リソース
-
-- **AWS Cognito User Pool**: ユーザー情報を管理するプール。
-- **AWS Cognito User Pool Client**: React アプリ（フロントエンド）から OAuth (Authorization Code Flow) でアクセスするためのクライアント設定。コールバックは `http://localhost:5173` に設定されています。
-- **AWS Cognito User Pool Domain**: Managed Login (Hosted UI) を提供するための専用ドメイン（ランダム文字列を利用）。
-
----
-
-## 4. デプロイ（環境構築）の実行手順
-
-本プロジェクトでは `direnv` を利用して AWS プロファイルやリージョン情報等の環境変数を読み込んでいます。実行前に `.env` ファイルに `AWS_PROFILE` などを設定してください。
-
-### Step 1: 初期化
+### 1. ECR の作成
 ```bash
-cd terraform
+cd terraform/ecr
 terraform init
-```
-
-### Step 2: 適用 (デプロイ)
-```bash
 terraform apply
 ```
 
-### Step 3: 出力値の確認
-適用完了後に出力される `cognito_domain_url` や `cognito_user_pool_client_id` の値は、フロントエンド (React) の Amplify または OAuth クライアント設定に使用します。
+### 2. コンテナイメージの Build & Push
+ECR リポジトリが作成されたら、バックエンドのコンテナイメージをビルドして Push します。
 ```bash
-terraform output
+cd ../../
+./backend/scripts/deploy.sh
 ```
+
+### 3. アプリケーション本体のデプロイ
+コンテナイメージが ECR に配置されたら、Lambda や API Gateway、Cognito などの本体を構築します。
+```bash
+cd terraform/app
+terraform init
+terraform apply
+```
+
+## 環境変数 (direnv)
+実行には以下の環境変数が設定されている必要があります。（ルートディレクトリの `.envrc` に記載）
+- `AWS_PROFILE`
+- `AWS_REGION`

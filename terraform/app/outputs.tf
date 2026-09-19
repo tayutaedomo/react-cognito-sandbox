@@ -9,3 +9,9 @@ output "cognito_user_pool_client_id" {
 output "cognito_domain_url" {
   value = "https://${aws_cognito_user_pool_domain.main.domain}.auth.ap-northeast-1.amazoncognito.com"
 }
+
+
+
+output "api_endpoint" {
+  value = aws_apigatewayv2_stage.default.invoke_url
+}
