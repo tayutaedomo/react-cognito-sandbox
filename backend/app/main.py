@@ -19,9 +19,12 @@ def health_check():
     return {"status": "ok"}
 
 
+import os
+
 def get_current_user(authorization: str | None = Header(None)):
     """
-    ローカル開発環境における API Gateway (Cognito Authorizer) のモック関数です。
+    ローカル開発環境ではモックトークンを検証し、
+    本番環境では API Gateway の JWT Authorizer が検証済みのため緩く通します。
     """
     if not authorization:
         raise HTTPException(status_code=401, detail="Missing Authorization header")
@@ -29,10 +32,15 @@ def get_current_user(authorization: str | None = Header(None)):
         raise HTTPException(status_code=401, detail="Invalid token format")
 
     token = authorization.split(" ")[1]
-    if token != "dummy_mock_token":
-        raise HTTPException(status_code=401, detail="Invalid or expired token")
-
-    return {"sub": "mock_user_123", "email": "mock@example.com"}
+    
+    use_mock = os.environ.get("USE_MOCK_COGNITO", "1") == "1"
+    if use_mock:
+        if token != "dummy_mock_token":
+            raise HTTPException(status_code=401, detail="Invalid or expired token")
+        return {"sub": "mock_user_123", "email": "mock@example.com"}
+    else:
+        # 本番では API Gateway が検証済み
+        return {"sub": "real_user", "token_passed": True}
 
 
 @app.get("/api/users")
