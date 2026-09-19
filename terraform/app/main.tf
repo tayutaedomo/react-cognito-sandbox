@@ -243,6 +243,13 @@ resource "aws_apigatewayv2_route" "api" {
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
 }
 
+# ブラウザからの CORS プリフライトリクエスト (OPTIONS) を未認証で通過させる
+resource "aws_apigatewayv2_route" "options" {
+  api_id    = aws_apigatewayv2_api.backend.id
+  route_key = "OPTIONS /api/{proxy+}"
+  target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+}
+
 # ヘルスチェック用のエンドポイントは、未認証のまま監視ツール等から叩けるようにする
 resource "aws_apigatewayv2_route" "health" {
   api_id    = aws_apigatewayv2_api.backend.id
