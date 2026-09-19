@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { useAuth } from './auth/AuthContext';
-import { MockAuthProvider } from './auth/MockAuthProvider';
 
 function MainApp() {
   const { user, signIn, signOut, isLoading } = useAuth();
@@ -11,7 +10,8 @@ function MainApp() {
     if (!user) return;
     setError(null);
     try {
-      const response = await fetch('http://localhost:8000/api/users', {
+      const apiEndpoint = import.meta.env.VITE_API_ENDPOINT || 'http://localhost:8000';
+      const response = await fetch(`${apiEndpoint}/api/users`, {
         headers: {
           'Authorization': `Bearer ${user.token}`
         }
@@ -61,12 +61,4 @@ function MainApp() {
   );
 }
 
-function App() {
-  return (
-    <MockAuthProvider>
-      <MainApp />
-    </MockAuthProvider>
-  );
-}
-
-export default App;
+export default MainApp;

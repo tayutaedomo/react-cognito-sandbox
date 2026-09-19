@@ -22,3 +22,10 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+.env.e2e
+
+# E2E test outputs
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/

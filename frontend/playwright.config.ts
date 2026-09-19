@@ -1,4 +1,13 @@
 import { defineConfig, devices } from '@playwright/test';
+import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// E2E テスト用の環境変数を読み込む
+dotenv.config({ path: path.resolve(__dirname, '.env.e2e') });
 
 export default defineConfig({
   testDir: './e2e',
