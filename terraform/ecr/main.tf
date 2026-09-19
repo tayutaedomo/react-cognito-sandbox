@@ -11,8 +11,9 @@ terraform {
 provider "aws" {}
 
 resource "aws_ecr_repository" "backend" {
-  name                 = "react-auth-poc-backend"
+  name                 = "${var.project_name}-backend"
   image_tag_mutability = "MUTABLE"
+  force_delete         = true
 
   image_scanning_configuration {
     scan_on_push = true

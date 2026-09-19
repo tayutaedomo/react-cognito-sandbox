@@ -79,16 +79,16 @@ resource "aws_cognito_user_pool_client" "main" {
   allowed_oauth_flows_user_pool_client = true
   allowed_oauth_flows                  = ["code"]
   # 取得するトークンに含まれる情報（スコープ）の定義
-  allowed_oauth_scopes                 = ["email", "openid", "profile"]
-  
+  allowed_oauth_scopes = ["email", "openid", "profile"]
+
   # 認証・サインアウト成功後のリダイレクト先（今回はローカル開発環境の Vite アプリケーションを想定）
-  callback_urls                        = ["http://localhost:5173", "http://localhost:5173/"]
-  logout_urls                          = ["http://localhost:5173", "http://localhost:5173/"]
+  callback_urls = var.callback_urls
+  logout_urls   = var.callback_urls
 }
 
 # Managed Login 画面（Hosted UI）を提供するためのドメイン設定
 resource "aws_cognito_user_pool_domain" "main" {
-  domain       = "react-auth-${random_string.suffix.result}"
+  domain       = "${var.project_name}-${random_string.suffix.result}"
   user_pool_id = aws_cognito_user_pool.main.id
 }
 
@@ -101,7 +101,7 @@ data "aws_caller_identity" "current" {}
 data "aws_region" "current" {}
 
 locals {
-  image_uri = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${data.aws_region.current.name}.amazonaws.com/react-auth-poc-backend:latest"
+  image_uri = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${data.aws_region.current.name}.amazonaws.com/${var.project_name}-backend:latest"
 }
 
 # ==============================================================================
@@ -110,7 +110,7 @@ locals {
 
 # Lambda 関数が AWS サービスにアクセスするためのベースとなる実行ロール
 resource "aws_iam_role" "lambda_exec" {
-  name = "react-auth-poc-lambda-exec-${random_string.suffix.result}"
+  name = "${var.project_name}-lambda-exec-${random_string.suffix.result}"
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
@@ -131,14 +131,14 @@ resource "aws_iam_role_policy_attachment" "lambda_basic" {
 
 # Backend が Cognito Admin API (ListUsers 等) を呼び出すためのカスタム権限
 resource "aws_iam_policy" "cognito_access" {
-  name = "react-auth-poc-cognito-access-${random_string.suffix.result}"
+  name = "${var.project_name}-cognito-access-${random_string.suffix.result}"
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
       Action = [
         "cognito-idp:ListUsers"
       ]
-      Effect = "Allow"
+      Effect   = "Allow"
       Resource = aws_cognito_user_pool.main.arn
     }]
   })
@@ -159,18 +159,18 @@ resource "aws_iam_role_policy_attachment" "lambda_cognito" {
 # ここで明示的に定義しておかないと、Lambda が永久保存設定のロググループを
 # 勝手に作成してしまい、terraform destroy 時に削除漏れ（孤立）が発生します。
 resource "aws_cloudwatch_log_group" "backend_lambda" {
-  name              = "/aws/lambda/react-auth-poc-backend"
+  name              = "/aws/lambda/${var.project_name}-backend"
   retention_in_days = 7
 }
 
 # バックエンド (FastAPI) を実行する Lambda 関数。
 # Docker コンテナ (AWS Lambda Web Adapter 経由) で動かすため Image 形式を指定。
 resource "aws_lambda_function" "backend" {
-  function_name = "react-auth-poc-backend"
+  function_name = "${var.project_name}-backend"
   role          = aws_iam_role.lambda_exec.arn
   package_type  = "Image"
   image_uri     = local.image_uri
-  
+
   # コンテナビルド環境 (M1/M2 Mac等) に合わせて arm64 を指定
   architectures = ["arm64"]
   timeout       = 30
@@ -181,7 +181,7 @@ resource "aws_lambda_function" "backend" {
       COGNITO_USER_POOL_ID = aws_cognito_user_pool.main.id
       COGNITO_REGION       = data.aws_region.current.name
       # 本番環境では実 Cognito を使用するためモックモードを無効化
-      USE_MOCK_COGNITO     = "0"
+      USE_MOCK_COGNITO = "0"
     }
   }
 }
@@ -192,12 +192,12 @@ resource "aws_lambda_function" "backend" {
 
 # Lambda の前段に配置する API Gateway。安価かつ高速な HTTP API (v2) を使用。
 resource "aws_apigatewayv2_api" "backend" {
-  name          = "react-auth-poc-api-${random_string.suffix.result}"
+  name          = "${var.project_name}-api-${random_string.suffix.result}"
   protocol_type = "HTTP"
-  
+
   # フロントエンドからのクロスオリジンリクエストを許可
   cors_configuration {
-    allow_origins = ["*"]
+    allow_origins = var.cors_allowed_origins
     allow_methods = ["*"]
     allow_headers = ["*"]
   }
