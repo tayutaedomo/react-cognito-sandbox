@@ -1,31 +1,73 @@
 # React + Cognito Managed Login POC
 
-このプロジェクトは、React と AWS Cognito (Managed Login) を組み合わせたサーバーレス・アーキテクチャのプロトタイプです。ユーザー情報を DynamoDB に持たず、Cognito 内のみで管理する構成を検証することを目的としています。
+このプロジェクトは、React と AWS Cognito (Managed Login) を組み合わせたサーバーレス・アーキテクチャのプロトタイプ（POC）です。
+ユーザー情報を DynamoDB に持たず、Cognito 内のみで管理し、セキュアな API 連携までを一気通貫で検証した構成となっています。
 
-## プロジェクト概要
+## アーキテクチャ図
 
-1. **React + Cognito Managed Login の検証**
-   - ユーザー登録、サインイン、パスワード変更をすべて Cognito の Managed Login (Hosted UI) で行います。
-2. **API 認証の検証 (今後の実装)**
-   - Cognito Authorizer + API Gateway + Lambda を用いて、Cognito Admin API (ListUsers) を呼び出す構成を検証します。
+```mermaid
+flowchart TD
+    User([Browser / User])
+    
+    subgraph Frontend ["Frontend (React + Vite)"]
+        App["React Application"]
+        Amplify["Amplify Auth"]
+    end
+    
+    subgraph AWS ["AWS Cloud"]
+        Cognito["Cognito User Pool (Managed Login)"]
+        APIGW["API Gateway (HTTP API)"]
+        Authorizer["JWT Authorizer"]
+        Lambda["AWS Lambda (FastAPI Container)"]
+    end
+    
+    User -->|Access| App
+    App -->|Sign In Request| Amplify
+    Amplify <-->|Redirect & OAuth Flow| Cognito
+    App -->|API Request w/ JWT| APIGW
+    
+    APIGW -->|Verify Token| Authorizer
+    Authorizer -.->|Validate| Cognito
+    Authorizer -->|Allow| APIGW
+    APIGW -->|Proxy| Lambda
+```
 
 ### 採用技術スタック
-- **Frontend**: React (TypeScript, Vite) (※ 構築予定)
-- **Backend**: AWS Lambda (コンテナベース) + API Gateway (※ 構築予定)
+- **Frontend**: React, TypeScript, Vite, AWS Amplify, Playwright
+- **Backend**: Python, FastAPI, AWS Lambda Web Adapter, boto3, Pytest
 - **Auth**: Amazon Cognito User Pool
-- **IaC**: Terraform
+- **IaC**: Terraform (App / ECR 分割管理)
 
 ## ディレクトリ構成
 
-- `terraform/`: AWSリソース (Cognito 等) をプロビジョニングするための Terraform 設定
-- `frontend/`: (予定) React アプリケーション
-- `backend/`: (予定) API用バックエンドアプリケーション
-- `.agents/`, `AGENTS.md`: AIアシスタントとの協調開発用ルール
+- `frontend/`: React アプリケーション。ローカル/実環境の切り替え対応。
+- `backend/`: API 用の FastAPI アプリケーション。コンテナビルド用 Dockerfile を含む。
+- `terraform/`: AWS リソースをデプロイするための構成ファイル（`app/` と `ecr/` に分割）。
+- `docs/adr/`: プロジェクトにおける重要なアーキテクチャ設計決定記録 (ADR)。
+- `AGENTS.md`: AI アシスタントとの協調開発用ルール定義。
 
 ## 開発・実行手順
-各ディレクトリの詳細な手順については、それぞれの README を参照してください。
+各コンポーネントの詳細な起動方法やデプロイ手順については、それぞれの README を参照してください。
 
-- **[terraform/README.md](./terraform/README.md)**: IaC リソースの構成とデプロイ手順
+1. **[terraform/README.md](./terraform/README.md)**: IaC リソースの構成とデプロイ手順
+2. **[frontend/README.md](./frontend/README.md)**: React アプリの開発手順と E2E テスト実行方法
+3. **[backend/README.md](./backend/README.md)**: FastAPI の起動方法とテスト実行方法
 
 ## AI との開発ルールについて
-本プロジェクトでは AI アシスタント (Antigravity) と協調して開発を行うための厳格なルール (`AGENTS.md`) を敷いています。コミットの自動実行の禁止やテスト・Lintの義務化などが定義されています。
+本プロジェクトでは AI アシスタント (Antigravity) と協調して開発を行うための厳格なルール (`AGENTS.md`) を敷いています。コミットの自動実行の禁止やテスト・Lintの義務化、ADR 草案の自発的な作成などが定義されています。
+
+---
+
+## 付録: POC で検証・達成したことの詳細
+
+1. **Cognito Managed Login (Hosted UI) を用いたフロントエンド認証**
+   - Amplify Auth (Gen 2) を使用し、React アプリケーションから Cognito の提供するログイン画面へリダイレクトし、セキュアに JWT トークンを取得するフローを実装しました。
+2. **API Gateway (HTTP API) + Cognito Authorizer による API 保護**
+   - フロントエンドから送信された JWT トークンを API Gateway 側で自動検証し、有効なリクエストのみをバックエンドへ通過させる構成を Terraform で構築しました。
+   - 課題となりやすい CORS プリフライト（OPTIONS リクエスト）の認証回避設定も組み込み済みです。
+3. **FastAPI を変更なしで Lambda にデプロイするコンテナアーキテクチャ**
+   - バックエンドには Python の FastAPI を採用し、`AWS Lambda Web Adapter` を用いることで、ASGI アプリケーションを書き換えることなくコンテナイメージとしてデプロイ・実行しています。
+4. **モックモードと実環境のシームレスな切り替え**
+   - フロントエンド・バックエンドともに、AWS 上にデプロイしなくてもローカル単体で動作・テストが可能なモックモード（DI / Context 切替）を実装しています。
+5. **E2E テスト (Playwright) による自動検証**
+   - 実際の Cognito ログイン画面をヘッドレスブラウザで操作し、API からのユーザー情報取得までを通しで検証する ATDD（受け入れテスト駆動開発）を実践しました。
