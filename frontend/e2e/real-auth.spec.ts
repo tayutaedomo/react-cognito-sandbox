@@ -19,12 +19,12 @@ test.describe('Real Cognito Authentication Flow', () => {
     await page.goto('/');
     
     // 初期状態の確認
-    await expect(page.locator('text=Please sign in to access the application.')).toBeVisible();
+    await expect(page.locator('text=ログイン、新規登録、またはパスワードを忘れた場合の再設定は')).toBeVisible();
     await page.screenshot({ path: 'test-results/screenshots/real-01-initial.png' });
 
     // 2. サインインボタンをクリック
     // App.tsx の表示は Sign In (Mock) だが、ここでは AmplifyAuthProvider の実装により本物へ飛ぶ
-    await page.click('button:has-text("Sign In")');
+    await page.click('button:has-text("ログイン / 登録 / パスワード再設定 (Managed Login)")');
     await page.waitForLoadState('networkidle');
 
     // Hosted UI (amazoncognito.com) へ遷移しているか確認

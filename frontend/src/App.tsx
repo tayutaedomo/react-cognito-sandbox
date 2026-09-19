@@ -32,9 +32,9 @@ function MainApp() {
       
       {!user ? (
         <div>
-          <p>Please sign in to access the application.</p>
-          <button onClick={signIn} disabled={isLoading}>
-            {isLoading ? 'Signing in...' : 'Sign In (Mock)'}
+          <p>ログイン、新規登録、またはパスワードを忘れた場合の再設定は、以下のボタンから AWS Cognito Managed Login 画面へ進んでください。</p>
+          <button onClick={signIn} disabled={isLoading} style={{ padding: '10px 20px', fontSize: '16px' }}>
+            {isLoading ? '処理中...' : 'ログイン / 登録 / パスワード再設定 (Managed Login)'}
           </button>
         </div>
       ) : (
