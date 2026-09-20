@@ -25,7 +25,8 @@ test.describe('Profile Editing Flow', () => {
       await page.fill('#signInFormPassword:visible', testPassword);
       await page.locator('input[name="signInSubmitButton"]:visible').first().click();
       
-      await page.waitForURL('http://localhost:5173/**');
+      const baseUrl = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:5173';
+      await page.waitForURL(`${baseUrl}/**`);
       await page.waitForLoadState('networkidle');
     }
 

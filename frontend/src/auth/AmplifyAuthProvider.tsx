@@ -1,4 +1,5 @@
-import React, { useEffect, useState, ReactNode } from 'react';
+import { useEffect, useState } from 'react';
+import type { ReactNode } from 'react';
 import { Amplify } from 'aws-amplify';
 import { signInWithRedirect, signOut as amplifySignOut, getCurrentUser, fetchAuthSession, fetchUserAttributes, updateUserAttributes } from 'aws-amplify/auth';
 import { Hub } from 'aws-amplify/utils';

@@ -102,9 +102,10 @@ resource "aws_cognito_user_pool_client" "main" {
   # - aws.cognito.signin.user.admin: Cognito 独自のスコープ。アクセストークンを使用してユーザー自身が属性更新 (updateUserAttributes) 等の API を呼び出すために必要
   allowed_oauth_scopes = ["email", "openid", "profile", "aws.cognito.signin.user.admin"]
 
-  # 認証・サインアウト成功後のリダイレクト先（今回はローカル開発環境の Vite アプリケーションを想定）
-  callback_urls = var.callback_urls
-  logout_urls   = var.callback_urls
+  # 認証・サインアウト成功後のリダイレクト先
+  # ローカル開発環境の URL (var.callback_urls) に加え、デプロイ先の Amplify Hosting の URL を動的に追加します。
+  callback_urls = concat(var.callback_urls, ["https://${aws_amplify_branch.main.branch_name}.${aws_amplify_app.frontend.id}.amplifyapp.com"])
+  logout_urls   = concat(var.callback_urls, ["https://${aws_amplify_branch.main.branch_name}.${aws_amplify_app.frontend.id}.amplifyapp.com"])
 }
 
 # Managed Login 画面（Hosted UI）を提供するためのドメイン設定
@@ -354,4 +355,70 @@ resource "aws_cognito_user_pool_ui_customization" "main" {
 CSS
 
   image_file = filebase64("${path.module}/logo.jpg")
+}
+
+# ==============================================================================
+# Amplify Hosting & WAF
+# ==============================================================================
+
+resource "aws_amplify_app" "frontend" {
+  name = "${var.project_name}-frontend"
+
+  # SPA(Single Page Application)のためのリダイレクト設定
+  custom_rule {
+    source = "</^[^.]+$|\\.(?!(css|gif|ico|jpg|js|png|txt|svg|woff|woff2|ttf|map|json)$)([^.]+$)/>"
+    status = "200"
+    target = "/index.html"
+  }
+}
+
+resource "aws_amplify_branch" "main" {
+  app_id      = aws_amplify_app.frontend.id
+  branch_name = "main"
+}
+
+# -------------------------------------------------------------
+# AWS WAF for Amplify (Global - us-east-1)
+# -------------------------------------------------------------
+
+# WAF および WAF のロググループは Amplify/CloudFront 用の場合 us-east-1 に作成する必要がある
+provider "aws" {
+  alias  = "us_east_1"
+  region = "us-east-1"
+}
+
+resource "aws_cloudwatch_log_group" "waf_amplify" {
+  provider          = aws.us_east_1
+  name              = "aws-waf-logs-${var.project_name}-amplify"
+  retention_in_days = 7
+}
+
+resource "aws_wafv2_web_acl" "amplify" {
+  provider    = aws.us_east_1
+  name        = "${var.project_name}-amplify-waf"
+  description = "WAF for Amplify Hosting"
+  scope       = "CLOUDFRONT"
+
+  default_action {
+    allow {}
+  }
+
+  visibility_config {
+    cloudwatch_metrics_enabled = true
+    metric_name                = "amplify-waf"
+    sampled_requests_enabled   = true
+  }
+}
+
+resource "aws_wafv2_web_acl_logging_configuration" "amplify" {
+  provider                = aws.us_east_1
+  log_destination_configs = [aws_cloudwatch_log_group.waf_amplify.arn]
+  resource_arn            = aws_wafv2_web_acl.amplify.arn
+}
+
+# Amplify Hosting への WAF アタッチ
+resource "aws_wafv2_web_acl_association" "amplify" {
+  provider     = aws.us_east_1
+  resource_arn = aws_amplify_app.frontend.arn
+  web_acl_arn  = aws_wafv2_web_acl.amplify.arn
 }
