@@ -79,11 +79,28 @@ resource "aws_cognito_user_pool_client" "main" {
   # Managed Login (Hosted UI) を利用するために IDP として COGNITO を指定
   supported_identity_providers = ["COGNITO"]
 
+  # クライアントが読み書き可能なユーザー属性の権限設定
+  read_attributes = [
+    "address", "birthdate", "email", "email_verified", "family_name", "gender", "given_name",
+    "locale", "middle_name", "name", "nickname", "phone_number", "phone_number_verified",
+    "picture", "preferred_username", "profile", "updated_at", "website", "zoneinfo"
+  ]
+  write_attributes = [
+    "address", "birthdate", "family_name", "gender", "given_name",
+    "locale", "middle_name", "name", "nickname", "phone_number",
+    "picture", "preferred_username", "profile", "updated_at", "website", "zoneinfo"
+  ]
+
   # OAuth フロー（Authorization Code Grant）を有効化し、認証後にコードを返すように設定
   allowed_oauth_flows_user_pool_client = true
   allowed_oauth_flows                  = ["code"]
+  
   # 取得するトークンに含まれる情報（スコープ）の定義
-  allowed_oauth_scopes = ["email", "openid", "profile"]
+  # - openid: OpenID Connect 準拠の ID トークンを取得するために必須
+  # - email: ユーザーのメールアドレス属性にアクセスするために必要
+  # - profile: email 以外の標準属性（name, phone_number等）にアクセスするために必要
+  # - aws.cognito.signin.user.admin: Cognito 独自のスコープ。アクセストークンを使用してユーザー自身が属性更新 (updateUserAttributes) 等の API を呼び出すために必要
+  allowed_oauth_scopes = ["email", "openid", "profile", "aws.cognito.signin.user.admin"]
 
   # 認証・サインアウト成功後のリダイレクト先（今回はローカル開発環境の Vite アプリケーションを想定）
   callback_urls = var.callback_urls

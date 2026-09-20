@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { useAuth } from './auth/AuthContext';
+import ProfileEditor from './components/ProfileEditor';
 
 function MainApp() {
   const { user, signIn, signOut, isLoading } = useAuth();
   const [users, setUsers] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [currentView, setCurrentView] = useState<'home' | 'profile'>('home');
 
   const fetchUsers = async () => {
     if (!user) return;
@@ -26,6 +28,10 @@ function MainApp() {
     }
   };
 
+  if (user && currentView === 'profile') {
+    return <ProfileEditor onBack={() => setCurrentView('home')} />;
+  }
+
   return (
     <div style={{ padding: '20px', fontFamily: 'sans-serif' }}>
       <h1>React + Cognito POC</h1>
@@ -40,7 +46,14 @@ function MainApp() {
       ) : (
         <div>
           <p>Welcome, {user.email}!</p>
-          <button onClick={signOut}>Sign Out</button>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button onClick={() => setCurrentView('profile')} style={{ padding: '8px 16px' }}>
+              Edit Profile
+            </button>
+            <button onClick={signOut} style={{ padding: '8px 16px' }}>
+              Sign Out
+            </button>
+          </div>
           
           <hr />
           <h2>Users API</h2>

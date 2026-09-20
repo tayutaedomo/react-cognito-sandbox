@@ -11,6 +11,8 @@ export interface AuthContextType {
   signIn: () => void;
   signOut: () => void;
   isLoading: boolean;
+  getAttributes: () => Promise<Record<string, string>>;
+  updateAttributes: (attributes: Record<string, string>) => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);

@@ -9,6 +9,11 @@ interface Props {
 export function MockAuthProvider({ children }: Props) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [mockAttributes, setMockAttributes] = useState<Record<string, string>>({
+    email: 'mock@example.com',
+    name: 'Mock User',
+    phone_number: '+819012345678'
+  });
 
   const signIn = () => {
     setIsLoading(true);
@@ -16,7 +21,7 @@ export function MockAuthProvider({ children }: Props) {
     setTimeout(() => {
       setUser({
         username: 'mock_user_123',
-        email: 'mock@example.com',
+        email: mockAttributes.email,
         token: 'dummy_mock_token'
       });
       setIsLoading(false);
@@ -27,8 +32,19 @@ export function MockAuthProvider({ children }: Props) {
     setUser(null);
   };
 
+  const getAttributes = async () => {
+    return { ...mockAttributes };
+  };
+
+  const updateAttributes = async (attributes: Record<string, string>) => {
+    setMockAttributes(prev => ({ ...prev, ...attributes }));
+  };
+
   return (
-    <AuthContext.Provider value={{ user, signIn, signOut, isLoading }}>
+    <AuthContext.Provider value={{ 
+      user, signIn, signOut, isLoading,
+      getAttributes, updateAttributes
+    }}>
       {children}
     </AuthContext.Provider>
   );

@@ -1,6 +1,6 @@
 import React, { useEffect, useState, ReactNode } from 'react';
 import { Amplify } from 'aws-amplify';
-import { signInWithRedirect, signOut as amplifySignOut, getCurrentUser, fetchAuthSession } from 'aws-amplify/auth';
+import { signInWithRedirect, signOut as amplifySignOut, getCurrentUser, fetchAuthSession, fetchUserAttributes, updateUserAttributes } from 'aws-amplify/auth';
 import { Hub } from 'aws-amplify/utils';
 import { AuthContext } from './AuthContext';
 import type { User } from './AuthContext';
@@ -15,7 +15,12 @@ Amplify.configure({
       loginWith: {
         oauth: {
           domain: import.meta.env.VITE_COGNITO_DOMAIN || '',
-          scopes: ['email', 'openid', 'profile'],
+          // スコープの定義:
+          // - openid: ID トークン取得に必須
+          // - email: メールアドレス属性へのアクセス
+          // - profile: その他の標準属性 (name 等) へのアクセス
+          // - aws.cognito.signin.user.admin: ユーザー自身による属性更新 API 等を呼び出すための権限
+          scopes: ['email', 'openid', 'profile', 'aws.cognito.signin.user.admin'],
           redirectSignIn: [window.location.origin],
           redirectSignOut: [window.location.origin],
           responseType: 'code'
@@ -76,8 +81,20 @@ export const AmplifyAuthProvider = ({ children }: { children: ReactNode }) => {
     setUser(null);
   };
 
+  const getAttributes = async () => {
+    const attrs = await fetchUserAttributes();
+    return attrs as Record<string, string>;
+  };
+
+  const updateAttributes = async (attributes: Record<string, string>) => {
+    await updateUserAttributes({ userAttributes: attributes });
+  };
+
   return (
-    <AuthContext.Provider value={{ user, signIn, signOut, isLoading: loading }}>
+    <AuthContext.Provider value={{ 
+      user, signIn, signOut, isLoading: loading,
+      getAttributes, updateAttributes
+    }}>
       {children}
     </AuthContext.Provider>
   );

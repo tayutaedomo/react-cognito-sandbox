@@ -77,3 +77,8 @@ flowchart TD
 7. **Managed Login における自己サインアップの制限検証**
    - 業務システム等で一般的に求められる「管理者のみがユーザーを作成できる（ユーザーによる勝手な登録を防ぐ）」要件を満たすため、Terraform の `admin_create_user_config` で `allow_admin_create_user_only = true` を設定できることを検証しました。
    - この設定により、Managed Login 画面から「Sign up」への導線が完全に非表示となり、意図せぬアカウント追加をセキュアに防止できることを確認しました。
+8. **Cognito デフォルト属性 (OIDC) の GUI 編集と仕様制約の検証**
+   - Amplify SDK (`updateUserAttributes`) を用いて、フロントエンドから Cognito の標準属性 (name, family_name, birthdate 等) を直接更新できる GUI を実装しました。
+   - **スコープの制約**: クライアントから属性を更新するには、Terraform (App Client) 側で `read_attributes` / `write_attributes` を許可するだけでなく、OAuth スコープに Cognito 独自の `aws.cognito.signin.user.admin` を要求する必要があることを検証しました。
+   - **updated_at の制約**: OIDC 標準の `updated_at` 属性は、AWS (Cognito) 側では自動更新されません。そのため、アプリケーション側で現在時刻 (UNIXタイムスタンプ) を計算し、更新リクエストに毎回含めて送信する仕様となっています。
+   - **email 更新の制約**: `email` をサインインエイリアスとして利用している場合、単純な更新を許可すると次回以降のログインが不能になるリスクがあるため、フロントエンドからの直接編集は Read Only (更新不可) とするよう設計方針を定めました。
