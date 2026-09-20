@@ -18,3 +18,9 @@ variable "cors_allowed_origins" {
   type        = list(string)
   default     = ["*"]
 }
+
+variable "allow_admin_create_user_only" {
+  description = "管理者のみがユーザーを作成できるかどうか (自己サインアップの無効化)"
+  type        = bool
+  default     = false
+}

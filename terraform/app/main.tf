@@ -41,6 +41,10 @@ resource "random_string" "suffix" {
 resource "aws_cognito_user_pool" "main" {
   name = "react-cognito-sandbox-pool"
 
+  admin_create_user_config {
+    allow_admin_create_user_only = var.allow_admin_create_user_only
+  }
+
   # サインインにメールアドレスを使用する
   username_attributes = ["email"]
   # サインアップ時に自動で検証（認証コード送信）を行う属性

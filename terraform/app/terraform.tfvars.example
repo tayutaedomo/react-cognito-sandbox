@@ -1,0 +1,36 @@
+# ==============================================================================
+# Terraform Variables Example (App)
+# ==============================================================================
+# このファイルは `terraform.tfvars` のテンプレートです。
+# 開発環境や本番環境に合わせて値を変更し、`terraform.tfvars` としてコピーして使用してください。
+
+# 1. プロジェクト名
+# AWS リソースのプレフィックスとして使用されます。
+# 例: "my-production-app", "auth-system-prod"
+project_name = "react-auth-poc"
+
+# 2. コールバック URL (サインイン後のリダイレクト先)
+# 本番環境では実際のデプロイ先ドメインを指定してください。
+# 例: ["https://app.example.com", "https://app.example.com/"]
+callback_urls = [
+  "http://localhost:5173",
+  "http://localhost:5173/"
+]
+
+# 3. ログアウト URL (サインアウト後のリダイレクト先)
+# 本番環境では実際のデプロイ先ドメインを指定してください。
+# 例: ["https://app.example.com", "https://app.example.com/"]
+logout_urls = [
+  "http://localhost:5173",
+  "http://localhost:5173/"
+]
+
+# 4. API Gateway の CORS 許可オリジン
+# セキュリティの観点から、本番環境では "*" は避け、利用するフロントエンドのドメインを明記してください。
+# 例: ["https://app.example.com"]
+cors_allowed_origins = ["*"]
+
+# 5. 自己サインアップの無効化 (管理者のみがユーザーを作成できるか)
+# - true : ユーザーは勝手にアカウントを作れない (業務システム等の本番環境向け)
+# - false: 誰でも自由にアカウントを作成できる (B2C サービス等向け)
+allow_admin_create_user_only = false
