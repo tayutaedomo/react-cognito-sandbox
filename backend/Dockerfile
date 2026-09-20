@@ -13,4 +13,4 @@ COPY app ./app
 
 # Lambda は /tmp 以外 Read-Only のため、uv run は使わず .venv の Python を直接使う
 ENV PATH="/var/task/.venv/bin:$PATH"
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--no-access-log"]

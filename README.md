@@ -82,3 +82,7 @@ flowchart TD
    - **スコープの制約**: クライアントから属性を更新するには、Terraform (App Client) 側で `read_attributes` / `write_attributes` を許可するだけでなく、OAuth スコープに Cognito 独自の `aws.cognito.signin.user.admin` を要求する必要があることを検証しました。
    - **updated_at の制約**: OIDC 標準の `updated_at` 属性は、AWS (Cognito) 側では自動更新されません。そのため、アプリケーション側で現在時刻 (UNIXタイムスタンプ) を計算し、更新リクエストに毎回含めて送信する仕様となっています。
    - **email 更新の制約**: `email` をサインインエイリアスとして利用している場合、単純な更新を許可すると次回以降のログインが不能になるリスクがあるため、フロントエンドからの直接編集は Read Only (更新不可) とするよう設計方針を定めました。
+9. **API Gateway と Lambda (FastAPI) を横断した監査ログと JSON 構造化の実装**
+   - 本番運用を見据え、API Gateway のアクセスログと FastAPI のアプリケーションログの両方で、リクエストを実行したユーザーを一意に特定するためのログ出力（監査ログ）を実装しました。
+   - 個人情報 (PII) 保護の観点から、`email` 等はログに出力せず、Cognito 発行の UUID である `sub` のみを記録する方針を決定しました。
+   - バックエンドには `AWS Lambda Powertools` を導入し、ログの JSON 構造化を実施しました。認証ミドルウェアで抽出した `sub` を `logger.append_keys` やミドルウェア経由で注入することで、Uvicorn のアクセスログや以後のすべてのビジネスロジックログに**自動的にユーザーIDが付与される**堅牢なロギング機構を構築しました。

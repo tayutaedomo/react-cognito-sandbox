@@ -22,17 +22,35 @@ def health_check():
 import os
 import base64
 import json
-import logging
+from aws_lambda_powertools import Logger
 
-# ロギング設定
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-# Lambda環境では標準出力がCloudWatch Logsへ送られます
-if not logger.handlers:
-    handler = logging.StreamHandler()
-    formatter = logging.Formatter('%(levelname)s: %(message)s')
-    handler.setFormatter(formatter)
-    logger.addHandler(handler)
+# Lambda Powertools による構造化 JSON ロギング
+logger = Logger(service="backend-api")
+
+# リクエストごとにロガーの状態(append_keys等)をクリアするためのミドルウェア
+# FastAPI のような非同期/常駐環境では、リクエスト間の状態漏洩を防ぐために必要です。
+# 同時に、ここで Powertools を使って完全に構造化されたアクセスログを出力します。
+@app.middleware("http")
+async def request_lifecycle_middleware(request, call_next):
+    logger.clear_state()
+    
+    # 処理実行
+    response = await call_next(request)
+    
+    # Uvicorn の標準アクセスログを抑制しているため、ここでアクセスログを JSON 出力
+    # get_current_user で追加された sub も、この時点であればログに含まれます
+    logger.info(
+        "HTTP Access Log",
+        extra={
+            "http": {
+                "method": request.method,
+                "path": request.url.path,
+                "status_code": response.status_code,
+                "client_ip": request.client.host if request.client else None,
+            }
+        }
+    )
+    return response
 
 def get_current_user(authorization: str | None = Header(None)):
     """
@@ -52,7 +70,9 @@ def get_current_user(authorization: str | None = Header(None)):
         if token != "dummy_mock_token":
             raise HTTPException(status_code=401, detail="Invalid or expired token")
         sub = "mock_user_123"
-        logger.info(f"API accessed by user (mock): {sub}")
+        # このリクエスト中の後続のすべてのログに `sub` を自動で付与する
+        logger.append_keys(sub=sub)
+        logger.info("API accessed by user (mock)")
         return {"sub": sub}
     else:
         # 本番では API Gateway が署名と有効期限を検証済み。
@@ -72,13 +92,15 @@ def get_current_user(authorization: str | None = Header(None)):
             if not sub:
                 raise ValueError("Missing 'sub' in token payload")
                 
-            logger.info(f"API accessed by user: {sub}")
+            # Powertools: 後続のすべてのログ出力に自動的に `sub` を含める
+            logger.append_keys(sub=sub)
+            logger.info("API accessed by user")
+            
             # PII (email 等) は返さず、一意な識別子である sub のみを返す
             return {"sub": sub}
             
         except Exception as e:
-            logger.error(f"Failed to extract sub from token: {e}")
-            # 検証自体は API Gateway が行っているはずなので、パースエラーは異常事態
+            logger.error(f"Failed to extract sub from token", exc_info=True)
             raise HTTPException(status_code=401, detail="Invalid token payload")
 
 
