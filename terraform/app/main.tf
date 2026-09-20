@@ -265,3 +265,50 @@ resource "aws_lambda_permission" "apigw" {
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_apigatewayv2_api.backend.execution_arn}/*/*"
 }
+
+# ==============================================================================
+# UI Customization (Managed Login)
+# ==============================================================================
+resource "aws_cognito_user_pool_ui_customization" "main" {
+  client_id    = aws_cognito_user_pool_client.main.id
+  user_pool_id = aws_cognito_user_pool_domain.main.user_pool_id
+
+  css = <<CSS
+.logo-customizable {
+  max-width: 70%;
+  max-height: 70%;
+}
+.banner-customizable {
+  padding: 10px 0px 10px 0px;
+  background-color: #f4f4f4;
+}
+.background-customizable {
+  background-color: #ffffff; 
+}
+.label-customizable {
+  font-weight: 400;
+  color: #333333;
+}
+.textDescription-customizable {
+  padding-top: 10px;
+  padding-bottom: 10px;
+  display: block;
+  font-size: 16px;
+  color: #333333;
+}
+.submitButton-customizable {
+  background-color: #646cff;
+  color: #ffffff;
+  border-radius: 4px;
+}
+.submitButton-customizable:hover {
+  background-color: #535bf2;
+}
+.redirect-customizable {
+  color: #646cff !important;
+  font-weight: bold !important;
+}
+CSS
+
+  image_file = filebase64("${path.module}/logo.jpg")
+}
