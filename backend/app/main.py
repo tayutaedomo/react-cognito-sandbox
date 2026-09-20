@@ -20,11 +20,25 @@ def health_check():
 
 
 import os
+import base64
+import json
+import logging
+
+# ロギング設定
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+# Lambda環境では標準出力がCloudWatch Logsへ送られます
+if not logger.handlers:
+    handler = logging.StreamHandler()
+    formatter = logging.Formatter('%(levelname)s: %(message)s')
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
 
 def get_current_user(authorization: str | None = Header(None)):
     """
     ローカル開発環境ではモックトークンを検証し、
-    本番環境では API Gateway の JWT Authorizer が検証済みのため緩く通します。
+    本番環境では API Gateway の JWT Authorizer が検証済みのため、
+    トークンのペイロード部分を Base64 デコードして sub を抽出します。
     """
     if not authorization:
         raise HTTPException(status_code=401, detail="Missing Authorization header")
@@ -37,10 +51,35 @@ def get_current_user(authorization: str | None = Header(None)):
     if use_mock:
         if token != "dummy_mock_token":
             raise HTTPException(status_code=401, detail="Invalid or expired token")
-        return {"sub": "mock_user_123", "email": "mock@example.com"}
+        sub = "mock_user_123"
+        logger.info(f"API accessed by user (mock): {sub}")
+        return {"sub": sub}
     else:
-        # 本番では API Gateway が検証済み
-        return {"sub": "real_user", "token_passed": True}
+        # 本番では API Gateway が署名と有効期限を検証済み。
+        # トークンのペイロード(第2セグメント)をデコードして sub を取り出す。
+        try:
+            parts = token.split(".")
+            if len(parts) != 3:
+                raise ValueError("Invalid JWT format")
+            
+            # Base64URLデコード (パディング不足を補う)
+            payload_b64 = parts[1]
+            payload_b64 += "=" * ((4 - len(payload_b64) % 4) % 4)
+            payload_json = base64.urlsafe_b64decode(payload_b64).decode("utf-8")
+            payload = json.loads(payload_json)
+            
+            sub = payload.get("sub")
+            if not sub:
+                raise ValueError("Missing 'sub' in token payload")
+                
+            logger.info(f"API accessed by user: {sub}")
+            # PII (email 等) は返さず、一意な識別子である sub のみを返す
+            return {"sub": sub}
+            
+        except Exception as e:
+            logger.error(f"Failed to extract sub from token: {e}")
+            # 検証自体は API Gateway が行っているはずなので、パースエラーは異常事態
+            raise HTTPException(status_code=401, detail="Invalid token payload")
 
 
 @app.get("/api/users")

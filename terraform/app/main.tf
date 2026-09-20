@@ -224,11 +224,33 @@ resource "aws_apigatewayv2_api" "backend" {
   }
 }
 
+# API Gateway (HTTP API) 用の CloudWatch ロググループ
+resource "aws_cloudwatch_log_group" "api_gw_access_log" {
+  name              = "/aws/apigateway/${var.project_name}-api"
+  retention_in_days = 7
+}
+
 # HTTP API 用のデフォルトステージ。デプロイを自動化する。
 resource "aws_apigatewayv2_stage" "default" {
   api_id      = aws_apigatewayv2_api.backend.id
   name        = "$default"
   auto_deploy = true
+
+  access_log_settings {
+    destination_arn = aws_cloudwatch_log_group.api_gw_access_log.arn
+    format = jsonencode({
+      requestId             = "$context.requestId"
+      sourceIp              = "$context.identity.sourceIp"
+      requestTime           = "$context.requestTime"
+      httpMethod            = "$context.httpMethod"
+      routeKey              = "$context.routeKey"
+      status                = "$context.status"
+      protocol              = "$context.protocol"
+      responseLength        = "$context.responseLength"
+      cognitoSub            = "$context.authorizer.claims.sub"
+      authorizerError       = "$context.authorizer.error"
+    })
+  }
 }
 
 # Cognito で認証されたユーザーのみが API を叩けるようにする Authorizer。

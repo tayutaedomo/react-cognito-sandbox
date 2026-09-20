@@ -57,5 +57,14 @@ test.describe('Profile Editing Flow', () => {
     await page.click('button:has-text("Edit Profile")');
     await expect(page.locator('input[name="name"]')).toHaveValue(newName);
     await expect(page.locator('input[name="phone_number"]')).toHaveValue('+819012345678');
+    
+    // ホームに戻る
+    await page.click('button:has-text("Back to Home")');
+    
+    // API ログを出力させるために Fetch Users を実行
+    await page.click('button:has-text("Fetch Users")');
+    // 何らかのリスト（Users）が表示されるか、またはエラーが出ないことを確認
+    // 成功していれば ul > li が表示されるはず
+    await expect(page.locator('ul > li').first()).toBeVisible({ timeout: 10000 });
   });
 });
