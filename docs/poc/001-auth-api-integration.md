@@ -39,7 +39,8 @@ React から Cognito を利用して認証し、JWT で保護した API を呼�
 
 ## 実行手順
 
-- [Frontend: 起動・E2E テスト](../../frontend/README.md)
+- [Frontend: 起動](../../frontend/README.md)
+- [E2E: モック・実環境のテスト](../../e2e/README.md)
 - [Backend: 起動・単体テスト](../../backend/README.md)
 - [Terraform: インフラ構築](../../terraform/README.md)
 

@@ -1,0 +1,14 @@
+{
+  "name": "e2e",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "test:e2e": "VITE_USE_MOCK_COGNITO=true playwright test tests/mock-auth.spec.ts",
+    "test:e2e:real": "VITE_USE_MOCK_COGNITO=false playwright test tests/"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "dotenv": "^18.0.1"
+  }
+}

@@ -32,7 +32,8 @@ Cognito のログイン画面をどこまでカスタマイズできるか、自
 
 ## 実行手順
 
-- [Frontend: 起動・E2E テスト](../../frontend/README.md)
+- [Frontend: 起動](../../frontend/README.md)
+- [E2E: モック・実環境のテスト](../../e2e/README.md)
 - [Terraform: インフラ構築](../../terraform/README.md)
 
 [POC 一覧へ戻る](./README.md)

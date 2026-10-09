@@ -7,9 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "preview": "vite preview",
-    "test:e2e": "playwright test e2e/mock-auth.spec.ts",
-    "test:e2e:real": "VITE_USE_MOCK_COGNITO=false playwright test e2e/"
+    "preview": "vite preview"
   },
   "dependencies": {
     "aws-amplify": "^6.20.0",
@@ -17,12 +15,10 @@
     "react-dom": "^19.2.8"
   },
   "devDependencies": {
-    "@playwright/test": "^1.63.0",
     "@types/node": "^24.13.3",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",
     "@vitejs/plugin-react": "^6.1.1",
-    "dotenv": "^18.0.1",
     "oxlint": "^1.81.0",
     "typescript": "~6.0.2",
     "vite": "^8.3.0"

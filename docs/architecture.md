@@ -76,7 +76,8 @@ Terraform は `terraform/ecr/` と `terraform/app/` の2つの State に分割�
 初回は ECR を作成し、バックエンドのコンテナイメージを Push してから、アプリケーションのインフラを作成します。
 
 - [Terraform のデプロイ手順](../terraform/README.md)
-- [Frontend の開発・テスト手順](../frontend/README.md)
+- [Frontend の開発手順](../frontend/README.md)
+- [E2E のテスト手順](../e2e/README.md)
 - [Backend の開発・テスト・デプロイ手順](../backend/README.md)
 
 [プロジェクト README へ戻る](../README.md)
