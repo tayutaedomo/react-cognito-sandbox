@@ -4,7 +4,9 @@ Date: 2026-10-09
 
 ## Status
 
-Proposed（草案）
+Accepted
+
+Accepted Date: 2026-10-09
 
 ## Context
 
