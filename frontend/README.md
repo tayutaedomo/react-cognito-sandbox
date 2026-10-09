@@ -40,7 +40,17 @@ npm run test:e2e
 
 ### 実環境 (Cognito) でのテスト
 実際の AWS インフラ (Hosted UI) を経由してログインし、データを取得する結合テストです。
-実行前に、AWS 上にインフラがデプロイされ、`.env` に本番用の設定（およびテスト用ユーザー情報）が書き込まれている必要があります。
+実行前に、AWS 上にインフラがデプロイされている必要があります。
+`frontend/.env` に Cognito と API の接続設定、`frontend/.env.e2e` にテスト用ユーザー情報を設定してください。
+以下のコマンドは `frontend/` ディレクトリで実行します。
+
+```bash
+cp .env.e2e.example .env.e2e
+# .env.e2e の TEST_USER_EMAIL と TEST_USER_PASSWORD を編集します
+```
+
+Playwright は `.env.e2e` を読み込みます。実環境用のコマンドは `VITE_USE_MOCK_COGNITO=false` を設定して実行します。
+
 ```bash
 npm run test:e2e:real
 ```
