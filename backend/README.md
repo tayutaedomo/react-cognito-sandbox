@@ -25,6 +25,17 @@ AWS Lambda Web Adapter を利用した Dockerfile が用意されており、ロ
    uv run uvicorn app.main:app --reload
    ```
 
+## 単体テスト・Lint
+
+以下のコマンドは `backend/` ディレクトリで実行してください。
+単体テストはモックと Moto を利用し、AWS 上のリソースに依存せず実行できます。
+
+```bash
+uv run pytest
+uv run ruff check --fix
+uv run ruff format
+```
+
 ## デプロイ手順
 
 AWS へのデプロイには `scripts/deploy.sh` を使用します。（事前に `terraform/ecr` が apply されている必要があります）
