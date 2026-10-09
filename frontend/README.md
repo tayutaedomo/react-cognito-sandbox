@@ -29,31 +29,8 @@ AWS Amplify Auth (Gen 2) を利用して Cognito と連携し、ログイン・�
 
 ## E2E テスト (Playwright)
 
-当プロジェクトでは Playwright を用いた E2E テストを導入しており、2種類のシナリオを用意しています。
-テストを実行すると、自動的にフロントエンドとバックエンド (モックサーバー) が立ち上がります。
-
-### モック環境でのテスト
-AWS に依存しない高速な E2E テストです。
-```bash
-npm run test:e2e
-```
-
-### 実環境 (Cognito) でのテスト
-実際の AWS インフラ (Hosted UI) を経由してログインし、データを取得する結合テストです。
-実行前に、AWS 上にインフラがデプロイされている必要があります。
-`frontend/.env` に Cognito と API の接続設定、`frontend/.env.e2e` にテスト用ユーザー情報を設定してください。
-以下のコマンドは `frontend/` ディレクトリで実行します。
-
-```bash
-cp .env.e2e.example .env.e2e
-# .env.e2e の TEST_USER_EMAIL と TEST_USER_PASSWORD を編集します
-```
-
-Playwright は `.env.e2e` を読み込みます。実環境用のコマンドは `VITE_USE_MOCK_COGNITO=false` を設定して実行します。
-
-```bash
-npm run test:e2e:real
-```
+frontend と backend を横断する E2E テストは、ルート直下の `e2e/` で管理します。
+環境設定と実行方法は [E2E README](../e2e/README.md) を参照してください。
 
 ## Lint
 ```bash

@@ -5,8 +5,9 @@
 
 ## 採用技術スタック
 
-- **Frontend**: React, TypeScript, Vite, AWS Amplify, Playwright
+- **Frontend**: React, TypeScript, Vite, AWS Amplify
 - **Backend**: Python, FastAPI, AWS Lambda Web Adapter, boto3, Pytest
+- **E2E**: Playwright
 - **Auth**: Amazon Cognito User Pool
 - **IaC**: Terraform (App / ECR 分割管理)
 
@@ -18,7 +19,8 @@
 
 ## ディレクトリ構成
 
-- `frontend/`: React アプリケーションと Playwright E2E テスト。ローカル/実環境の切り替え対応。
+- `frontend/`: React アプリケーション。ローカル/実環境の切り替え対応。
+- `e2e/`: frontend と backend を横断する Playwright E2E テスト。
 - `backend/`: FastAPI アプリケーション、単体テスト、コンテナビルド用 Dockerfile。
 - `terraform/`: AWS リソースの構成ファイル（`app/` と `ecr/` に分割）。
 - `docs/`: アーキテクチャ、POC の記録、ADR。
@@ -30,8 +32,9 @@
 初回の AWS デプロイは Terraform の README に記載した順序で進めてください。
 
 1. [Terraform](./terraform/README.md): IaC リソースの構成とデプロイ手順
-2. [Frontend](./frontend/README.md): React アプリの開発手順と E2E テスト実行方法
+2. [Frontend](./frontend/README.md): React アプリの開発手順
 3. [Backend](./backend/README.md): FastAPI の起動方法、単体テスト・Lint・デプロイ手順
+4. [E2E](./e2e/README.md): モック・実環境の E2E テスト実行方法
 
 ## AI との開発ルールについて
 
