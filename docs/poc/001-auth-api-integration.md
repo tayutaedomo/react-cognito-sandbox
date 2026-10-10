@@ -1,5 +1,17 @@
 # POC 001: 認証・保護された API の連携
 
+## 目次
+
+- [目的](#目的)
+- [検証結果・制約](#検証結果制約)
+  - [Cognito Managed Login (Hosted UI) を用いたフロントエンド認証](#cognito-managed-login-hosted-ui-を用いたフロントエンド認証)
+  - [API Gateway (HTTP API) + Cognito Authorizer による API 保護](#api-gateway-http-api--cognito-authorizer-による-api-保護)
+  - [FastAPI を変更なしで Lambda にデプロイするコンテナアーキテクチャ](#fastapi-を変更なしで-lambda-にデプロイするコンテナアーキテクチャ)
+  - [モックモードと実環境のシームレスな切り替え](#モックモードと実環境のシームレスな切り替え)
+  - [E2E テスト (Playwright) による自動検証](#e2e-テスト-playwright-による自動検証)
+- [関連する設計決定](#関連する設計決定)
+- [実行手順](#実行手順)
+
 ## 目的
 
 React から Cognito を利用して認証し、JWT で保護した API を呼び出せるかを検証する。
