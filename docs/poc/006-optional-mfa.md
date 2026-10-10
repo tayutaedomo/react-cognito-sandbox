@@ -97,5 +97,6 @@ QR、シークレット、コード、トークンをトレースやスクリー
 ## 関連文書
 
 - [MFA の認証フロー](../mfa-flows.md)
+- [再登録・端末紛失からの復旧と既存トークンの検証（POC 007）](./007-mfa-recovery.md)
 - [ADR 0009 草案](../adr/0009-optional-mfa-self-service.md)
 - [POC 一覧](./README.md)

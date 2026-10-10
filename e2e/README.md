@@ -20,7 +20,8 @@
   - [実 Cognito でサインインと属性編集を確認する](#実-cognito-でサインインと属性編集を確認する)
   - [登録済み TOTP でサインインを確認する](#登録済み-totp-でサインインを確認する)
   - [任意 TOTP の登録・無効化・再有効化を確認する](#任意-totp-の登録無効化再有効化を確認する)
-  - [TOTP コード生成だけを単体テストする](#totp-コード生成だけを単体テストする)
+  - [TOTP の再登録・紛失からの復旧を確認する](#totp-の再登録紛失からの復旧を確認する)
+  - [TOTP コード生成と復旧ヘルパーを単体テストする](#totp-コード生成と復旧ヘルパーを単体テストする)
 - [結果と画面キャプチャ](#結果と画面キャプチャ)
   - [出力先](#出力先)
   - [モック画面と実環境の記録範囲](#モック画面と実環境の記録範囲)
@@ -133,8 +134,10 @@ cp e2e/.env.e2e.example e2e/.env.e2e
 | 通常のサインイン・属性編集 | `TEST_USER_EMAIL`、`TEST_USER_PASSWORD` |
 | 登録済み TOTP のサインイン | 上記に加えて `TEST_USER_TOTP_SECRET` |
 | 任意 TOTP の設定変更 | `MFA_OPTIONAL_USER_EMAIL`、`MFA_OPTIONAL_USER_PASSWORD` |
+| TOTP の復旧とセッション失効 | `MFA_RECOVERY_USER_EMAIL`、`MFA_RECOVERY_USER_PASSWORD`、`MFA_RECOVERY_USER_POOL_ID`、`MFA_RECOVERY_AWS_REGION`、`MFA_RECOVERY_AWS_PROFILE` |
 
 通常のユーザーと任意 MFA 専用ユーザーは分けます。任意 MFA テストは登録と有効設定を変更するためです。
+復旧テストも別の専用ユーザーを使用します。登録置き換えと全セッション失効を行うため、管理者の AWS CLI 認証も必要です。
 既存の `frontend/.env.e2e` を使っている場合は `e2e/.env.e2e` に移します。
 
 ### 任意 MFA の資格情報を分ける場合
@@ -169,7 +172,8 @@ cp e2e/.env.e2e.example e2e/.env.e2e
 | [実 Cognito でサインインと属性編集を確認する](#実-cognito-でサインインと属性編集を確認する) | AWS 接続設定・通常のテストユーザー | `test:e2e:real` | テストユーザーの名前・電話番号 |
 | [登録済み TOTP でサインインを確認する](#登録済み-totp-でサインインを確認する) | 上記に加えて登録済み TOTP のシークレット | `test:e2e:real` | 同じスイートで名前・電話番号も更新。TOTP 登録は変更しない |
 | [任意 TOTP の登録・無効化・再有効化を確認する](#任意-totp-の登録無効化再有効化を確認する) | OPTIONAL のプール・専用ユーザー | `test:e2e:mfa-optional` | TOTP 登録・有効設定。正常終了時は無効に戻す |
-| [TOTP コード生成だけを単体テストする](#totp-コード生成だけを単体テストする) | Node パッケージの依存関係のみ | `test:unit` | なし。ブラウザも起動しない |
+| [TOTP の再登録・紛失からの復旧を確認する](#totp-の再登録紛失からの復旧を確認する) | OPTIONAL のプール・復旧専用ユーザー・AWS CLI と管理者権限 | `test:e2e:mfa-recovery` | TOTP 登録・有効設定・全 Cognito セッション。終了処理で無効化・失効 |
+| [TOTP コード生成と復旧ヘルパーを単体テストする](#totp-コード生成と復旧ヘルパーを単体テストする) | Node パッケージの依存関係のみ | `test:unit` | なし。ブラウザも起動しない |
 
 実行コマンドと確認内容は各行のリンク先に記載しています。E2E のコマンド例は `CI=1` でサーバーを起動します。
 
@@ -216,13 +220,27 @@ CI=1 npm --prefix e2e run test:e2e:mfa-optional
 正常終了時は TOTP を無効に戻し、関連付けを保持します。中断・失敗時は変更が残る場合があるため、専用ユーザーの状態を確認してから再実行します。
 詳細は [POC 006](../docs/poc/006-optional-mfa.md) を参照してください。
 
-### TOTP コード生成だけを単体テストする
+### TOTP の再登録・紛失からの復旧を確認する
+
+OPTIONAL の環境と、`mfa-recovery-…@example.com` の専用ユーザーを使用します。
+必要な設定と管理者権限は [POC 007 の準備](../docs/poc/007-mfa-recovery.md#自動テストの準備と実行)を参照してください。
+
+```bash
+CI=1 npm --prefix e2e run test:e2e:mfa-recovery
+```
+
+登録中断 → 旧アプリの再有効化 → 新アプリへの置き換え → 紛失時の管理者無効化と再登録を確認します。
+変更前の同じトークンを Cognito と Users API に送り、設定変更と全セッション失効の影響も比較します。
+通常の `test:e2e:real` ではスキップします。再登録・管理者復旧の手順と制約は [POC 007](../docs/poc/007-mfa-recovery.md)を参照してください。
+
+### TOTP コード生成と復旧ヘルパーを単体テストする
 
 ```bash
 npm --prefix e2e run test:unit
 ```
 
-コード生成関数を既知の入力と期待値で確認します。ブラウザ、資格情報、AWS 接続は不要です。
+コード生成関数を既知の入力と期待値で確認します。復旧ヘルパーは AWS CLI 呼び出しをモックに置き換え、対象ユーザー・プール設定のガードと管理者操作の引数を確認します。
+ブラウザ、資格情報、AWS 接続は不要です。
 フロントエンドの MFA 設定ロジックの単体テストは [Frontend README](../frontend/README.md#単体テスト) を参照してください。
 
 ## 結果と画面キャプチャ
