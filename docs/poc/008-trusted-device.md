@@ -85,5 +85,6 @@ CI=1 npm --prefix e2e run test:e2e:mfa-device
 
 - [AWS: Cognito ユーザーデバイスの記憶と認証](https://docs.aws.amazon.com/cognito/latest/developerguide/amazon-cognito-user-pools-device-tracking.html)
 - [Amplify Auth: Remember a device](https://docs.amplify.aws/gen1/react/build-a-backend/auth/remember-device/)
+- [信頼するデバイスの保存先と実装](../trusted-device-implementation.md)
 - [設計判断の草案: ADR 0011](../adr/0011-trusted-device-srp-poc.md)
 - [E2E テスト手順](../../e2e/README.md)
