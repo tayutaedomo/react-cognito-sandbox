@@ -37,6 +37,6 @@ allow_admin_create_user_only = false
 
 # 6. MFA (既定値は従来どおり無効)
 # TOTP 必須の POC: mfa_configuration = "ON", totp_enabled = true
-# 任意 MFA: OPTIONAL (登録用のアプリ画面は次のステップで追加)
+# 任意 MFA: OPTIONAL (ログイン後の MFA 設定画面で登録・有効化)
 mfa_configuration = "OFF"
 totp_enabled      = false

@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { useAuth } from './auth/AuthContext';
 import ProfileEditor from './components/ProfileEditor';
+import MfaSettings from './components/MfaSettings';
 
 function MainApp() {
   const { user, signIn, signOut, isLoading } = useAuth();
   const [users, setUsers] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [currentView, setCurrentView] = useState<'home' | 'profile'>('home');
+  const [currentView, setCurrentView] = useState<'home' | 'profile' | 'mfa'>('home');
 
   const fetchUsers = async () => {
     if (!user) return;
@@ -27,6 +28,10 @@ function MainApp() {
       setError(err.message);
     }
   };
+
+  if (user && currentView === 'mfa') {
+    return <MfaSettings onBack={() => setCurrentView('home')} />;
+  }
 
   if (user && currentView === 'profile') {
     return <ProfileEditor onBack={() => setCurrentView('home')} />;
@@ -52,6 +57,9 @@ function MainApp() {
             </button>
             <button onClick={signOut} style={{ padding: '8px 16px' }}>
               Sign Out
+            </button>
+            <button onClick={() => setCurrentView('mfa')} style={{ padding: '8px 16px' }}>
+              MFA 設定
             </button>
           </div>
           

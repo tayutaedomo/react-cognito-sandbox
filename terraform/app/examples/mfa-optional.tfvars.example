@@ -1,0 +1,4 @@
+# ログイン後にユーザー自身が TOTP を登録・有効化する POC 用。
+# 既存環境の terraform.tfvars と重ねて指定する。
+mfa_configuration = "OPTIONAL"
+totp_enabled      = true
