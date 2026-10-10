@@ -2,12 +2,17 @@ import { useState } from 'react';
 import { useAuth } from './auth/AuthContext';
 import ProfileEditor from './components/ProfileEditor';
 import MfaSettings from './components/MfaSettings';
+import DevicePoc from './components/DevicePoc';
 
 function MainApp() {
   const { user, signIn, signOut, isLoading } = useAuth();
   const [users, setUsers] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [currentView, setCurrentView] = useState<'home' | 'profile' | 'mfa'>('home');
+  const [currentView, setCurrentView] = useState<'home' | 'profile' | 'mfa' | 'device-poc'>('home');
+
+  if (currentView === 'device-poc') {
+    return <DevicePoc onBack={() => setCurrentView('home')} />;
+  }
 
   const fetchUsers = async () => {
     if (!user) return;
@@ -47,6 +52,7 @@ function MainApp() {
           <button onClick={signIn} disabled={isLoading} style={{ padding: '10px 20px', fontSize: '16px' }}>
             {isLoading ? '処理中...' : 'ログイン / 登録 / パスワード再設定 (Managed Login)'}
           </button>
+          <p><button onClick={() => setCurrentView('device-poc')}>信頼するデバイス POC（SRP ログイン）</button></p>
         </div>
       ) : (
         <div>

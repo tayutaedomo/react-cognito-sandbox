@@ -1,14 +1,24 @@
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Amplify } from 'aws-amplify';
-import { signInWithRedirect, signOut as amplifySignOut, getCurrentUser, fetchAuthSession, fetchUserAttributes, updateUserAttributes } from 'aws-amplify/auth';
+import { signInWithRedirect, signOut as amplifySignOut, getCurrentUser, fetchAuthSession, fetchUserAttributes, updateUserAttributes, signIn as amplifySignIn, confirmSignIn, fetchMFAPreference, fetchDevices, rememberDevice, forgetDevice } from 'aws-amplify/auth';
 import { Hub } from 'aws-amplify/utils';
 import { AuthContext } from './AuthContext';
-import { fetchMFAPreference, setUpTOTP, verifyTOTPSetup, updateMFAPreference } from 'aws-amplify/auth';
+import { setUpTOTP, verifyTOTPSetup, updateMFAPreference } from 'aws-amplify/auth';
 import { createMfaService } from './mfaService';
+import { createDeviceService } from './deviceService';
 import type { User } from './AuthContext';
 
 const mfa = createMfaService({ fetchMFAPreference, setUpTOTP, verifyTOTPSetup, updateMFAPreference });
+const deviceAuth = createDeviceService({
+  signIn: amplifySignIn,
+  confirmSignIn,
+  fetchMFAPreference,
+  fetchDevices,
+  fetchAuthSession,
+  rememberDevice,
+  forgetDevice,
+});
 
 // Amplify の設定
 // 本来は aws-exports.js や環境変数から読み込む
@@ -39,9 +49,7 @@ export const AmplifyAuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    // 初回マウント時に現在のユーザーセッションを確認
-    const checkUser = async () => {
+  const refreshUser = async () => {
       try {
         const currentUser = await getCurrentUser();
         const session = await fetchAuthSession();
@@ -52,11 +60,14 @@ export const AmplifyAuthProvider = ({ children }: { children: ReactNode }) => {
           token: session.tokens?.idToken?.toString() || ''
         });
       } catch {
-        // サインインしていない場合はエラーが飛んでくるので null のまま
         setUser(null);
-      } finally {
-        setLoading(false);
       }
+  };
+
+  useEffect(() => {
+    const checkUser = async () => {
+      await refreshUser();
+      setLoading(false);
     };
 
     checkUser();
@@ -65,6 +76,7 @@ export const AmplifyAuthProvider = ({ children }: { children: ReactNode }) => {
     const unsubscribe = Hub.listen('auth', ({ payload }) => {
       switch (payload.event) {
         case 'signInWithRedirect':
+        case 'signedIn':
           checkUser();
           break;
         case 'signedOut':
@@ -96,9 +108,9 @@ export const AmplifyAuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ 
+    <AuthContext.Provider value={{
       user, signIn, signOut, isLoading: loading,
-      getAttributes, updateAttributes, mfa
+      getAttributes, updateAttributes, mfa, deviceAuth, refreshUser
     }}>
       {children}
     </AuthContext.Provider>

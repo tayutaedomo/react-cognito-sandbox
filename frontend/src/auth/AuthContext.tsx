@@ -1,5 +1,6 @@
 import { createContext, useContext } from 'react';
 import type { MfaService } from './mfaService';
+import type { DeviceAuthService } from './deviceService';
 
 export interface User {
   username: string;
@@ -15,6 +16,8 @@ export interface AuthContextType {
   getAttributes: () => Promise<Record<string, string>>;
   updateAttributes: (attributes: Record<string, string>) => Promise<void>;
   mfa: MfaService;
+  deviceAuth: DeviceAuthService;
+  refreshUser: () => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
