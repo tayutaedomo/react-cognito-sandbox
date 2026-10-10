@@ -43,48 +43,53 @@ function MainApp() {
   }
 
   return (
-    <div style={{ padding: '20px', fontFamily: 'sans-serif' }}>
-      <h1>React + Cognito POC</h1>
-      
+    <main className={`app-shell${user ? '' : ' landing'}`}>
+      <header className="page-heading">
+        <h1>React + Cognito POC</h1>
+      </header>
+
       {!user ? (
-        <div>
+        <section className="panel">
           <p>ログイン、新規登録、またはパスワードを忘れた場合の再設定は、以下のボタンから AWS Cognito Managed Login 画面へ進んでください。</p>
-          <button onClick={signIn} disabled={isLoading} style={{ padding: '10px 20px', fontSize: '16px' }}>
-            {isLoading ? '処理中...' : 'ログイン / 登録 / パスワード再設定 (Managed Login)'}
-          </button>
-          <p><button onClick={() => setCurrentView('device-poc')}>信頼するデバイス POC（SRP ログイン）</button></p>
-        </div>
-      ) : (
-        <div>
-          <p>Welcome, {user.email}!</p>
-          <div style={{ display: 'flex', gap: '10px' }}>
-            <button onClick={() => setCurrentView('profile')} style={{ padding: '8px 16px' }}>
-              Edit Profile
+          <div className="landing-actions">
+            <button className="button-primary" onClick={signIn} disabled={isLoading}>
+              {isLoading ? '処理中...' : 'ログイン / 登録 / パスワード再設定 (Managed Login)'}
             </button>
-            <button onClick={signOut} style={{ padding: '8px 16px' }}>
-              Sign Out
-            </button>
-            <button onClick={() => setCurrentView('mfa')} style={{ padding: '8px 16px' }}>
-              MFA 設定
-            </button>
+            <button onClick={() => setCurrentView('device-poc')}>信頼するデバイス POC（SRP ログイン）</button>
           </div>
-          
-          <hr />
-          <h2>Users API</h2>
-          <button onClick={fetchUsers}>Fetch Users</button>
-          
-          {error && <p style={{ color: 'red' }}>{error}</p>}
-          
-          {users.length > 0 && (
-            <ul>
-              {users.map((u: any) => (
-                <li key={u.id}>{u.email} ({u.status})</li>
-              ))}
-            </ul>
-          )}
-        </div>
+        </section>
+      ) : (
+        <>
+          <section className="panel">
+            <p className="welcome">Welcome, {user.email}!</p>
+            <div className="action-row">
+              <button onClick={() => setCurrentView('profile')}>
+                Edit Profile
+              </button>
+              <button onClick={signOut}>
+                Sign Out
+              </button>
+              <button onClick={() => setCurrentView('mfa')}>
+                MFA 設定
+              </button>
+            </div>
+          </section>
+
+          <section className="panel">
+            <h2>Users API</h2>
+            <button className="button-primary" onClick={fetchUsers}>Fetch Users</button>
+            {error && <p className="feedback feedback--error" role="alert">{error}</p>}
+            {users.length > 0 && (
+              <ul className="user-list">
+                {users.map((u: any) => (
+                  <li key={u.id}>{u.email} ({u.status})</li>
+                ))}
+              </ul>
+            )}
+          </section>
+        </>
       )}
-    </div>
+    </main>
   );
 }
 

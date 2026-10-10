@@ -79,53 +79,61 @@ export default function MfaSettings({ onBack }: { onBack: () => void }) {
   }
 
   return (
-    <div style={{ padding: 20, maxWidth: 640, margin: '0 auto' }}>
-      <h2>MFA 設定</h2>
-      <button onClick={onBack} disabled={busy}>ホームに戻る</button>
-      <p>認証アプリを使うと、パスワードに加えて6桁のコードでログインできます。</p>
-      {error && <p role="alert">{error}</p>}
-      {message && <p role="status">{message}</p>}
-      {busy && <p role="status">処理中...</p>}
-      {preference && <p data-testid="mfa-status">TOTP：{preference.enabled ? '有効' : '無効'}{preference.preferred ? '（優先方式）' : ''}</p>}
-      {!setup && !verified && <button onClick={refresh} disabled={busy}>設定を再読み込み</button>}
-      {!setup && !verified && preference && (
-        <div style={{ display: 'flex', gap: 12, marginTop: 16, flexWrap: 'wrap' }}>
-          {preference.enabled ? (
-            <button onClick={() => { void setEnabled(false); }} disabled={busy}>TOTP を無効にする</button>
-          ) : (
-            <>
-              <button onClick={startSetup} disabled={busy}>認証アプリを登録する</button>
-              <button onClick={() => { void setEnabled(true); }} disabled={busy}>登録済みの認証アプリを有効にする</button>
-            </>
-          )}
-        </div>
-      )}
-      {!setup && !verified && preference && !preference.enabled && <p>登録済みのアプリがある場合は再び有効にできます。未登録の場合は、先に登録してください。</p>}
-      {setup && (
-        <section>
-          <h3>認証アプリを登録</h3>
-          <p>Google Authenticator などの認証アプリで QR コードを読み込んでください。</p>
-          <img src={setup.qr} alt="認証アプリ登録用 QR コード" width={240} height={240} />
-          <details>
-            <summary>手動入力用のセットアップキー</summary>
-            <code data-testid="totp-secret">{setup.secret}</code>
-          </details>
-          <p>QR コードとセットアップキーは秘密情報です。共有しないでください。</p>
-          <form onSubmit={verify}>
-            <label htmlFor="totp-setup-code">認証アプリの6桁コード</label>
-            <input id="totp-setup-code" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} required value={code} onChange={event => setCode(event.target.value)} disabled={busy} />
-            <button type="submit" disabled={busy}>コードを確認して有効にする</button>
-          </form>
-          <button disabled={busy} onClick={() => { setSetup(null); setCode(''); setError(''); }}>登録を中断する</button>
-        </section>
-      )}
-      {verified && (
-        <section>
-          <p>認証アプリの登録確認は完了しました。有効化の設定をもう一度保存してください。</p>
-          <button onClick={() => { void setEnabled(true); }} disabled={busy}>有効化を再試行する</button>
-        </section>
-      )}
-      <p>変更後はサインアウトし、新しいログインで確認してください。現在のログイン状態は継続します。</p>
-    </div>
+    <main className="app-shell app-shell--narrow">
+      <header className="page-heading">
+        <button className="button-link" onClick={onBack} disabled={busy}>ホームに戻る</button>
+        <h2>MFA 設定</h2>
+        <p>認証アプリを使うと、パスワードに加えて6桁のコードでログインできます。</p>
+      </header>
+      <section className="panel">
+        {error && <p className="feedback feedback--error" role="alert">{error}</p>}
+        {message && <p className="feedback feedback--success" role="status">{message}</p>}
+        {busy && <p className="feedback feedback--busy" role="status">処理中...</p>}
+        {preference && <p className={`status-line ${preference.enabled ? 'status-line--enabled' : 'status-line--disabled'}`} data-testid="mfa-status">TOTP：{preference.enabled ? '有効' : '無効'}{preference.preferred ? '（優先方式）' : ''}</p>}
+        {!setup && !verified && <div><button onClick={refresh} disabled={busy}>設定を再読み込み</button></div>}
+        {!setup && !verified && preference && (
+          <div className="action-row">
+            {preference.enabled ? (
+              <button className="button-danger" onClick={() => { void setEnabled(false); }} disabled={busy}>TOTP を無効にする</button>
+            ) : (
+              <>
+                <button className="button-primary" onClick={startSetup} disabled={busy}>認証アプリを登録する</button>
+                <button onClick={() => { void setEnabled(true); }} disabled={busy}>登録済みの認証アプリを有効にする</button>
+              </>
+            )}
+          </div>
+        )}
+        {!setup && !verified && preference && !preference.enabled && <p className="help-text">登録済みのアプリがある場合は再び有効にできます。未登録の場合は、先に登録してください。</p>}
+        {setup && (
+          <section className="subpanel">
+            <h3>認証アプリを登録</h3>
+            <p>Google Authenticator などの認証アプリで QR コードを読み込んでください。</p>
+            <div className="qr-frame"><img src={setup.qr} alt="認証アプリ登録用 QR コード" width={240} height={240} /></div>
+            <details>
+              <summary>手動入力用のセットアップキー</summary>
+              <code data-testid="totp-secret">{setup.secret}</code>
+            </details>
+            <p className="help-text">QR コードとセットアップキーは秘密情報です。共有しないでください。</p>
+            <form className="form-stack" onSubmit={verify}>
+              <div className="form-field form-field--compact">
+                <label htmlFor="totp-setup-code">認証アプリの6桁コード</label>
+                <input id="totp-setup-code" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} required value={code} onChange={event => setCode(event.target.value)} disabled={busy} />
+              </div>
+              <div className="form-actions">
+                <button className="button-primary" type="submit" disabled={busy}>コードを確認して有効にする</button>
+                <button type="button" disabled={busy} onClick={() => { setSetup(null); setCode(''); setError(''); }}>登録を中断する</button>
+              </div>
+            </form>
+          </section>
+        )}
+        {verified && (
+          <section className="subpanel">
+            <p>認証アプリの登録確認は完了しました。有効化の設定をもう一度保存してください。</p>
+            <button className="button-primary" onClick={() => { void setEnabled(true); }} disabled={busy}>有効化を再試行する</button>
+          </section>
+        )}
+        <p className="page-note">変更後はサインアウトし、新しいログインで確認してください。現在のログイン状態は継続します。</p>
+      </section>
+    </main>
   );
 }

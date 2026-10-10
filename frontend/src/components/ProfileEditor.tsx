@@ -71,66 +71,54 @@ const ProfileEditor: React.FC<ProfileEditorProps> = ({ onBack }) => {
     }
   };
 
-  if (loading) return <p>Loading profile...</p>;
+  if (loading) return <main className="app-shell app-shell--narrow"><p>Loading profile...</p></main>;
 
   return (
-    <div style={{ padding: '20px', maxWidth: '600px', margin: '0 auto' }}>
-      <h2>Edit Profile</h2>
-      <button onClick={onBack} style={{ marginBottom: '20px' }}>&larr; Back to Home</button>
+    <main className="app-shell app-shell--narrow">
+      <header className="page-heading">
+        <button className="button-link" onClick={onBack}>&larr; Back to Home</button>
+        <h2>Edit Profile</h2>
+      </header>
 
       {message && (
-        <div style={{ 
-          padding: '10px', 
-          marginBottom: '20px', 
-          backgroundColor: message.type === 'success' ? '#d4edda' : '#f8d7da',
-          color: message.type === 'success' ? '#155724' : '#721c24',
-          borderRadius: '4px'
-        }}>
+        <div className={`feedback feedback--${message.type === 'success' ? 'success' : 'error'}`} role={message.type === 'error' ? 'alert' : 'status'}>
           {message.text}
         </div>
       )}
 
-      <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-        {STANDARD_ATTRIBUTES.map(attr => {
-          // email はログインIDとして使用しているため、単純な更新を許可すると
-          // 次回以降ログイン不能になるリスクがあるため、フロントエンドからの直接編集は Read Only とする。
-          const isReadOnly = ['email', 'email_verified', 'phone_number_verified', 'updated_at'].includes(attr);
-          return (
-            <div key={attr} style={{ display: 'flex', flexDirection: 'column' }}>
-              <label htmlFor={attr} style={{ fontWeight: 'bold', marginBottom: '5px' }}>
-                {attr} {isReadOnly && '(Read Only)'}
-              </label>
-              <input
-                id={attr}
-                name={attr}
-                type="text"
-                value={attributes[attr] || ''}
-                onChange={handleChange}
-                disabled={isReadOnly || saving}
-                style={{ padding: '8px', fontSize: '16px', borderRadius: '4px', border: '1px solid #ccc' }}
-                placeholder={`Enter ${attr}...`}
-              />
-            </div>
-          );
-        })}
-        <button 
-          type="submit" 
-          disabled={saving}
-          style={{ 
-            padding: '10px 20px', 
-            fontSize: '16px', 
-            backgroundColor: '#007bff', 
-            color: 'white', 
-            border: 'none', 
-            borderRadius: '4px',
-            cursor: 'pointer',
-            marginTop: '10px'
-          }}
-        >
-          {saving ? 'Saving...' : 'Save Profile'}
-        </button>
-      </form>
-    </div>
+      <section className="panel">
+        <form className="form-stack" onSubmit={handleSave}>
+          <div className="profile-grid">
+            {STANDARD_ATTRIBUTES.map(attr => {
+              // email はログインIDとして使用しているため、単純な更新を許可すると
+              // 次回以降ログイン不能になるリスクがあるため、フロントエンドからの直接編集は Read Only とする。
+              const isReadOnly = ['email', 'email_verified', 'phone_number_verified', 'updated_at'].includes(attr);
+              return (
+                <div className="form-field" key={attr}>
+                  <label htmlFor={attr}>
+                    {attr} {isReadOnly && '(Read Only)'}
+                  </label>
+                  <input
+                    id={attr}
+                    name={attr}
+                    type="text"
+                    value={attributes[attr] || ''}
+                    onChange={handleChange}
+                    disabled={isReadOnly || saving}
+                    placeholder={`Enter ${attr}...`}
+                  />
+                </div>
+              );
+            })}
+          </div>
+          <div className="form-actions">
+            <button className="button-primary" type="submit" disabled={saving}>
+              {saving ? 'Saving...' : 'Save Profile'}
+            </button>
+          </div>
+        </form>
+      </section>
+    </main>
   );
 };
 
