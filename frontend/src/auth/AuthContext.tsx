@@ -1,4 +1,5 @@
 import { createContext, useContext } from 'react';
+import type { MfaService } from './mfaService';
 
 export interface User {
   username: string;
@@ -13,6 +14,7 @@ export interface AuthContextType {
   isLoading: boolean;
   getAttributes: () => Promise<Record<string, string>>;
   updateAttributes: (attributes: Record<string, string>) => Promise<void>;
+  mfa: MfaService;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);

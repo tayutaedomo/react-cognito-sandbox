@@ -8,6 +8,13 @@ const __dirname = path.dirname(__filename);
 
 // E2E テスト用の環境変数を読み込む
 dotenv.config({ path: path.resolve(__dirname, '.env.e2e') });
+// 任意 MFA の状態を変更するシナリオには専用ユーザーを使う。
+dotenv.config({ path: path.resolve(__dirname, '.env.mfa-optional'), quiet: true });
+
+// 失敗時のページスナップショットにも登録用シークレットを残さない。
+if (process.env.VITE_USE_MOCK_COGNITO === 'false') {
+  process.env.PLAYWRIGHT_NO_COPY_PROMPT = '1';
+}
 
 export default defineConfig({
   testDir: './tests',

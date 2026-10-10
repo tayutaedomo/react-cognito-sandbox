@@ -57,7 +57,8 @@ terraform apply
 `OFF` は新規の TOTP 登録を設定せず、ユーザーの登録済み TOTP を削除しません。
 無効化・再有効化は初回登録状態のリセットにはなりません。因子だけの無効化と MFA 方針の OFF も異なります。
 繰り返し切り替える場合の制約は [MFA POC 手順](../docs/poc/005-mfa-foundation.md#無効化再有効化を繰り返す場合の制約) に記載しています。
-任意 MFA の未登録ユーザー向け画面は次のステップで追加します。
+任意 MFA の登録・設定画面は [POC 006](../docs/poc/006-optional-mfa.md) を参照してください。
+任意 POC には `examples/mfa-optional.tfvars.example` を使用します。
 
 TOTP 必須の plan は `app/` で実行します。User Pool 全体に適用されます。
 

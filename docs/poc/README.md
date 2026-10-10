@@ -3,7 +3,7 @@
 各 POC の目的、検証結果、制約、関連する設計決定を記録します。
 現在のシステム構成は [アーキテクチャ](../architecture.md) を参照してください。
 
-既存 README の10項目の検証記録を、以下の4テーマに整理しています。
+既存 README の検証記録と追加の MFA 検証を、以下のテーマに整理しています。
 番号は文書の識別子であり、検証を実施した順序を示すものではありません。
 
 | POC | 検証テーマ | 結果の要約 |
@@ -13,6 +13,7 @@
 | [003: 監査ログ](./003-audit-logging.md) | ユーザー識別、構造化ログ、PII 方針 | API Gateway と FastAPI による監査ログと、個人情報を記録しない方針を整理 |
 | [004: フロントエンド配信・WAF](./004-frontend-hosting-waf.md) | Hosting、デプロイ、WAF | Amplify Hosting へのデプロイと、WAF の関連付け・ログ出力を実装 |
 | [005: MFA の足場と TOTP 必須](./005-mfa-foundation.md) | MFA 方針、TOTP、検証手順 | TOTP 登録・再ログイン・誤入力・API 連携を実環境で検証。Google Authenticator による TOTP サインインを確認 |
+| [006: 任意 TOTP MFA](./006-optional-mfa.md) | ログイン後の登録、有効化・無効化 | Hosted UI を維持し、本人が認証アプリと MFA 設定を管理する画面・検証手順 |
 
 ## 新しい POC の記録
 

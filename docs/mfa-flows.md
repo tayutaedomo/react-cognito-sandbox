@@ -15,11 +15,14 @@
   - [利用者から見たフロー](#利用者から見たフロー-1)
   - [コンポーネント間のシーケンス](#コンポーネント間のシーケンス-1)
   - [確認済みの SDK 登録経路との違い](#確認済みの-sdk-登録経路との違い)
+- [UC3：任意 MFA の登録・有効化・無効化](#uc3任意-mfa-の登録有効化無効化)
+  - [利用者から見たフロー](#利用者から見たフロー-2)
+  - [コンポーネント間のシーケンス](#コンポーネント間のシーケンス-2)
 - [図に登場するコード・トークンの区別](#図に登場するコードトークンの区別)
 
 ## 前提と図の読み方
 
-- 対象はパスワードと TOTP の2要素認証。User Pool は MFA `ON`、TOTP 有効。
+- 対象はパスワードと TOTP の2要素認証。UC1・UC2 は MFA `ON`、UC3 は `OPTIONAL` の User Pool を前提とし、いずれも TOTP を有効にする。
 - 現在の検証環境は管理者によるユーザー作成のみを許可している。管理者が恒久パスワードを設定した、TOTP 未登録ユーザーを初回登録の対象とする。
 - React は Amplify の `signInWithRedirect()` を使う。ログイン・TOTP 入力画面は Cognito が提供する。現在の実環境は Hosted UI classic（バージョン1）。
 - シーケンス図の「React / Amplify」はブラウザ内で動作する。独立したサーバーではない。
@@ -29,6 +32,7 @@
 | --- | --- | --- |
 | 1. 登録済みユーザーのサインイン | 現在の実装と実環境の正常経路 | Hosted UI の TOTP 入力、React 復帰、Users API を E2E で確認 |
 | 2. 未登録ユーザーの初回サインイン | AWS 仕様に基づく登録完了までの想定経路 | SRP / MFA_SETUP による登録は確認済み。QR 登録画面の詳細・内部通信順序は未検証 |
+| 3. 任意 MFA の本人による設定 | React の設定画面から Cognito API を呼ぶ実装経路 | 操作・検証は [POC 006](./poc/006-optional-mfa.md) を参照 |
 
 ## アカウント作成・TOTP 登録・MFA 認証の違い
 
@@ -215,6 +219,81 @@ sequenceDiagram
 初回 QR 登録の検証では、この中断ケースと登録完了ケースを分けて記録する。
 [AWS：初回トークンと登録中断の制約](https://docs.aws.amazon.com/cognito/latest/developerguide/user-pool-settings-mfa-totp.html)
 
+## UC3：任意 MFA の登録・有効化・無効化
+
+### 利用者から見たフロー
+
+TOTP が無効なユーザーは、パスワードでログインしてから本人の設定画面を開く。
+この経路の登録画面は React が提供し、次回の TOTP 入力画面は Cognito が提供する。
+
+```mermaid
+flowchart TD
+    Login["パスワードでログイン（TOTP 無効）"] --> Settings["React の MFA 設定画面"]
+    Settings --> Register["認証アプリを登録する"]
+    Register --> QR["QR を読み込み、6桁コードを入力"]
+    QR --> Verify{"コード検証成功？"}
+    Verify -->|いいえ| QR
+    Verify -->|はい| Save["TOTP を有効化・優先方式に設定"]
+    Save --> Saved{"設定保存成功？"}
+    Saved -->|いいえ| Retry["有効化のみ再試行"]
+    Retry --> Save
+    Saved -->|はい| Enabled["QR とキーを除去、有効表示"]
+    Enabled --> Fresh["サインアウトし新しいセッションでログイン"]
+    Fresh --> Challenge["Cognito がパスワードと TOTP を要求"]
+    Challenge --> Disable["React の設定画面で無効化"]
+    Disable --> Password["次の新しいログインはパスワードのみ"]
+    Password --> Reenable["登録済みの認証アプリを再有効化"]
+    Reenable --> Fresh
+```
+
+無効化は認証アプリとの関連付けの削除ではない。再有効化に QR の登録を繰り返す必要はない。
+有効な方式の一覧が空でも、未登録と無効化済みは区別できないため、画面には登録と再有効化の両方を用意する。
+
+### コンポーネント間のシーケンス
+
+```mermaid
+sequenceDiagram
+    actor U as 利用者
+    participant R as React / Amplify
+    participant C as Cognito API
+    participant T as 認証アプリ
+    Note over U,C: Hosted UI でログイン済み、MFA OPTIONAL
+    U->>R: MFA 設定を開く
+    R->>C: fetchMFAPreference / GetUser
+    C-->>R: 有効な方式・優先方式
+    U->>R: 認証アプリを登録する
+    R->>C: setUpTOTP / AssociateSoftwareToken
+    C-->>R: 共有シークレット
+    R->>R: ブラウザ内で otpauth URI と QR を生成
+    R-->>U: QR とセットアップキー
+    U->>T: QR を読み込む
+    T-->>U: 6桁コード
+    U->>R: コードを入力
+    R->>C: verifyTOTPSetup / VerifySoftwareToken
+    C-->>R: 登録検証成功
+    R->>R: QR・キー・入力コードを除去
+    R->>C: updateMFAPreference / SetUserMFAPreference（PREFERRED）
+    alt 設定保存成功
+        C-->>R: 成功
+        R->>C: 設定を再取得
+        C-->>R: TOTP 有効・優先方式
+        R-->>U: 有効表示
+    else 設定保存失敗
+        C-->>R: エラー
+        R-->>U: 有効化のみ再試行可能
+    end
+    Note over R,C: 各 API の認可は aws.cognito.signin.user.admin を持つ Access トークン
+    U->>R: TOTP を無効にする
+    R->>C: updateMFAPreference（DISABLED）
+    C-->>R: 成功（関連付けは保持）
+    R->>C: 設定を再取得
+    C-->>R: TOTP 無効
+    R-->>U: 次の新規ログインで MFA 要求の変化を確認
+```
+
+設定変更は現在のログインを終了させない。既存の Cookie・トークンを引き継がない新しいセッションで認証要求を確認する。
+詳細は [POC 006](./poc/006-optional-mfa.md) と [ADR 0009 草案](./adr/0009-optional-mfa-self-service.md) を参照する。
+
 ## 図に登場するコード・トークンの区別
 
 | 名前 | 用途 | このプロジェクトでの扱い |
@@ -223,7 +302,7 @@ sequenceDiagram
 | TOTP コード | 時刻で変わる6桁の追加認証コード | 利用者が Cognito 画面に入力。通常ログインでも使用 |
 | OAuth 認可コード | リダイレクト認証の結果をトークンと交換するコード | Amplify が PKCE の `code_verifier` とともに交換 |
 | ID トークン | ユーザーの認証情報を含む JWT | 現在の Users API の Bearer トークン |
-| Access トークン | スコープに応じた Cognito API 等の操作 | 自分の属性取得・更新に Amplify が利用 |
+| Access トークン | スコープに応じた Cognito API 等の操作 | 自分の属性取得・更新と MFA 設定に Amplify が利用 |
 | Refresh トークン | セッションのトークン更新 | Amplify が管理。新規サインインとは別の経路 |
 | 初回登録用の一時 Access トークン | 未登録ユーザーの TOTP 設定を開始する認可 | Hosted UI 初回の仕様上の注意点。通常ログイン完了と同一視しない |
 | 認証チャレンジの Session | API の認証・登録チャレンジを継続する値 | `MFA_SETUP` 等で使用。ブラウザのログイン Cookie とは別物 |

@@ -6,6 +6,7 @@
 - [環境構築と起動](#環境構築と起動)
 - [E2E テスト (Playwright)](#e2e-テスト-playwright)
 - [Lint](#lint)
+- [単体テスト](#単体テスト)
 
 ## 概要
 Vite と React (TypeScript) で構築されたフロントエンドアプリケーションです。
@@ -44,3 +45,12 @@ frontend と backend を横断する E2E テストは、ルート直下の `e2e/
 npm run lint
 ```
 (Vite テンプレートに標準搭載されている高速な Linter `oxlint` を使用しています)
+
+## 単体テスト
+
+```bash
+npm run test:unit
+```
+
+Vitest で MFA 設定ロジックを AWS 非接続で検証します。
+ログイン後の MFA 設定画面では TOTP の登録・有効化・無効化ができます。[任意 MFA の検証手順](../docs/poc/006-optional-mfa.md) を参照してください。

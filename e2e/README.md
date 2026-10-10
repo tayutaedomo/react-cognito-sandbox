@@ -8,6 +8,7 @@ frontend・backend・Cognito を横断するシナリオを、アプリケーシ
 - [モック環境](#モック環境)
 - [実環境 (Cognito)](#実環境-cognito)
 - [TOTP MFA](#totp-mfa)
+- [任意 TOTP MFA](#任意-totp-mfa)
 - [シナリオ一覧の確認](#シナリオ一覧の確認)
 - [実行結果](#実行結果)
 
@@ -72,6 +73,21 @@ Hosted UI classic（バージョン1）で検証し、Managed Login バージョ
 ```bash
 npm --prefix e2e run test:unit
 ```
+
+## 任意 TOTP MFA
+
+MFA OPTIONAL のプールと、設定を変更してよい専用ユーザーを使用します。
+Git 管理外の `e2e/.env.mfa-optional` に `MFA_OPTIONAL_USER_EMAIL` と `MFA_OPTIONAL_USER_PASSWORD` を設定します。
+
+```bash
+CI=1 npm --prefix e2e run test:e2e:mfa-optional
+```
+
+登録、誤コードからの再試行、TOTP 付きサインイン、Users API、無効化後のパスワードのみのサインイン、登録済みアプリの再有効化を検証します。
+開始時は TOTP 未登録または無効にします。正常終了時は無効に戻し、シークレットの関連付けを保持します。
+中断・失敗時は変更が残る場合があります。通常の実環境テストではこのシナリオをスキップします。
+実環境ではトレースと失敗時のページスナップショットを無効化し、QR とキーを保存しません。
+詳細は [POC 006](../docs/poc/006-optional-mfa.md) を参照してください。
 
 ## シナリオ一覧の確認
 

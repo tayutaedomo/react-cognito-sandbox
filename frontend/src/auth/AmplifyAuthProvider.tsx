@@ -4,7 +4,11 @@ import { Amplify } from 'aws-amplify';
 import { signInWithRedirect, signOut as amplifySignOut, getCurrentUser, fetchAuthSession, fetchUserAttributes, updateUserAttributes } from 'aws-amplify/auth';
 import { Hub } from 'aws-amplify/utils';
 import { AuthContext } from './AuthContext';
+import { fetchMFAPreference, setUpTOTP, verifyTOTPSetup, updateMFAPreference } from 'aws-amplify/auth';
+import { createMfaService } from './mfaService';
 import type { User } from './AuthContext';
+
+const mfa = createMfaService({ fetchMFAPreference, setUpTOTP, verifyTOTPSetup, updateMFAPreference });
 
 // Amplify の設定
 // 本来は aws-exports.js や環境変数から読み込む
@@ -47,7 +51,7 @@ export const AmplifyAuthProvider = ({ children }: { children: ReactNode }) => {
           email: currentUser.signInDetails?.loginId || '',
           token: session.tokens?.idToken?.toString() || ''
         });
-      } catch (error) {
+      } catch {
         // サインインしていない場合はエラーが飛んでくるので null のまま
         setUser(null);
       } finally {
@@ -94,7 +98,7 @@ export const AmplifyAuthProvider = ({ children }: { children: ReactNode }) => {
   return (
     <AuthContext.Provider value={{ 
       user, signIn, signOut, isLoading: loading,
-      getAttributes, updateAttributes
+      getAttributes, updateAttributes, mfa
     }}>
       {children}
     </AuthContext.Provider>
