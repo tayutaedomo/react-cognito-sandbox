@@ -40,6 +40,61 @@ cd ..
 
 ### モックと実 Cognito の接続構成
 
+**モック：認証・MFA 設定と Users API の両方をローカルで確認する**
+
+```mermaid
+flowchart TD
+    subgraph Local["ローカル PC"]
+        P["Playwright"]
+        F["frontend 開発サーバー<br/>5173番"]
+        subgraph Browser["ブラウザ"]
+            R["React アプリ"]
+            A["MockAuthProvider<br/>認証・MFA のモック"]
+        end
+        B["backend<br/>8000番・モック Users API"]
+        P -->|画面操作| R
+        P -.->|起動・稼働確認| F
+        P -.->|起動・稼働確認| B
+        F -->|アプリ配信| R
+        R <-->|サインイン・MFA 設定| A
+        R <-->|Users API| B
+    end
+```
+
+**実 Cognito：認証・MFA 設定と Users API の接続先が AWS に変わる**
+
+```mermaid
+flowchart TD
+    subgraph Local["ローカル PC"]
+        P["Playwright"]
+        F["frontend 開発サーバー<br/>5173番"]
+        subgraph Browser["ブラウザ"]
+            R["React アプリ"]
+            A["Amplify Auth"]
+        end
+        B["backend<br/>8000番・起動のみ<br/>API 接続なし"]
+        P -->|画面操作| R
+        P -.->|起動・稼働確認| F
+        P -.->|起動・稼働確認| B
+        F -->|アプリ配信| R
+        R <-->|サインイン・MFA 設定| A
+    end
+    subgraph AWS["AWS"]
+        C["Cognito<br/>ログイン画面・本人の設定 API"]
+        G["API Gateway<br/>JWT 検証"]
+        L["Lambda / FastAPI"]
+        G <-->|Users API| L
+        L <-->|IAM 権限で ListUsers| C
+    end
+    A <-->|リダイレクト認証・設定 API| C
+    R <-->|Users API・ID トークン| G
+    style B fill:#f3f3f3,stroke:#888,stroke-dasharray:5 5
+```
+
+実線はブラウザ操作・アプリ配信・認証・API 通信、点線はテスト用サーバーの起動と稼働確認です。
+モックでは AWS に接続しません。実 Cognito ではローカル backend も起動しますが、ブラウザの API 呼び出しは AWS に向かいます。
+図は既定のローカル frontend を検証する構成です。
+
 | モード | ブラウザでの認証 | Users API の接続先 | AWS の準備 |
 | --- | --- | --- | --- |
 | モック | React の MockAuthProvider | ローカルのモック backend | 不要 |
@@ -47,7 +102,6 @@ cd ..
 
 モックでは frontend に `VITE_USE_MOCK_COGNITO=true`、backend に `USE_MOCK_COGNITO=1` を指定します。
 実 Cognito 用コマンドは `VITE_USE_MOCK_COGNITO=false` を指定します。
-どちらも Playwright がローカル frontend（5173番）とモック backend（8000番）を起動しますが、実 Cognito モードの API 呼び出しは AWS に向かいます。
 
 既定のブラウザ接続先は `http://localhost:5173` です。公開ページを検証する場合は `PLAYWRIGHT_BASE_URL` を指定します。
 その URL を Cognito の許可済みコールバックに登録してください。公開ページの検証時も、現在の構成ではローカルサーバーを起動します。
@@ -103,6 +157,16 @@ cp e2e/.env.e2e.example e2e/.env.e2e
 `CI=0` は文字列として値が存在するため、再利用を許可する指定にはなりません。
 
 ## 目的別の実行手順
+
+| 目的 | 必要な準備 | 実行するスクリプト | AWS 上で変更される状態 |
+| --- | --- | --- | --- |
+| [画面と API 連携をローカルで確認](#aws-なしで画面と-api-連携を確認する) | ローカルの依存関係のみ | `test:e2e` | なし。モック内の状態を変更 |
+| [実 Cognito のサインイン・属性編集](#実-cognito-でサインインと属性編集を確認する) | AWS 接続設定・通常のテストユーザー | `test:e2e:real` | テストユーザーの名前・電話番号 |
+| [登録済み TOTP のサインイン](#登録済み-totp-でサインインを確認する) | 上記に加えて登録済み TOTP のシークレット | `test:e2e:real` | 同じスイートで名前・電話番号も更新。TOTP 登録は変更しない |
+| [任意 TOTP の登録・設定変更](#任意-totp-の登録無効化再有効化を確認する) | OPTIONAL のプール・専用ユーザー | `test:e2e:mfa-optional` | TOTP 登録・有効設定。正常終了時は無効に戻す |
+| [TOTP コード生成だけを確認](#totp-コード生成だけを単体テストする) | Node パッケージの依存関係のみ | `test:unit` | なし。ブラウザも起動しない |
+
+実行コマンドと確認内容は各行のリンク先に記載しています。E2E のコマンド例は `CI=1` でサーバーを起動します。
 
 ### AWS なしで画面と API 連携を確認する
 
