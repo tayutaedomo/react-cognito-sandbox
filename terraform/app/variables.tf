@@ -41,3 +41,9 @@ variable "totp_enabled" {
   type        = bool
   default     = false
 }
+
+variable "device_tracking_enabled" {
+  description = "Enable Cognito device tracking and opt-in remembered devices for the trusted-device POC"
+  type        = bool
+  default     = false
+}

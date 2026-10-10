@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { AuthContext } from './AuthContext';
 import type { User } from './AuthContext';
 import { createMfaService } from './mfaService';
+import { createDeviceService } from './deviceService';
 
 interface Props {
   children: ReactNode;
@@ -34,6 +35,30 @@ export function MockAuthProvider({ children }: Props) {
     name: 'Mock User',
     phone_number: '+819012345678'
   });
+  const [deviceAuth] = useState(() => {
+    let remembered = false;
+    let signedIn = false;
+    const mockSession = () => ({ tokens: signedIn ? {
+      accessToken: { payload: { device_key: remembered ? 'mock-device' : undefined, exp: Math.floor(Date.now() / 1000) + 3600 } },
+      idToken: { payload: { exp: Math.floor(Date.now() / 1000) + 3600 } },
+    } : undefined });
+    return createDeviceService({
+      async signIn() { return { isSignedIn: false, nextStep: { signInStep: 'CONFIRM_SIGN_IN_WITH_TOTP_CODE' } }; },
+      async confirmSignIn({ challengeResponse }) {
+        if (challengeResponse !== '123456') throw Object.assign(new Error('Mismatch'), { name: 'NotAuthorizedException' });
+        signedIn = true;
+        return { isSignedIn: true, nextStep: { signInStep: 'DONE' } };
+      },
+      async fetchMFAPreference() { return { enabled: ['TOTP'] }; },
+      async fetchDevices() { return remembered ? [{ id: 'mock-device', name: 'Mock device' }] : []; },
+      async fetchAuthSession() { return mockSession(); },
+      async rememberDevice() { remembered = true; },
+      async forgetDevice() { remembered = false; },
+    });
+  });
+  const refreshUser = async () => {
+    if (!user) setUser({ username: 'mock_device_user', email: mockAttributes.email, token: 'dummy_mock_token' });
+  };
 
   const signIn = () => {
     setIsLoading(true);
@@ -63,7 +88,7 @@ export function MockAuthProvider({ children }: Props) {
   return (
     <AuthContext.Provider value={{ 
       user, signIn, signOut, isLoading,
-      getAttributes, updateAttributes, mfa
+      getAttributes, updateAttributes, mfa, deviceAuth, refreshUser
     }}>
       {children}
     </AuthContext.Provider>
