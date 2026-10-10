@@ -14,6 +14,7 @@
 ## ドキュメント
 
 - [アーキテクチャ](./docs/architecture.md): 現在の構成図、認証・API・配信・ログの経路
+- [MFA の認証フロー](./docs/mfa-flows.md): TOTP 登録済み・未登録ユーザーのフロー図とシーケンス図
 - [POC 一覧](./docs/poc/README.md): 認証・API 連携、画面・属性の制約、監査ログ、配信・WAF の検証結果
 - [ADR](./docs/adr/): 重要なアーキテクチャ設計決定とその理由
 

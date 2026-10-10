@@ -5,6 +5,7 @@
 既存の Cognito リダイレクト認証で TOTP の登録・ログイン・API 連携を試す。
 User Pool 方針 (`OFF` / `OPTIONAL` / `ON`) と TOTP 登録の可否を Terraform で設定する。
 任意 MFA の登録画面、端末紛失時の復旧、SMS・メールは対象外。
+利用者の操作とコンポーネント間の通信は [MFA の認証フロー](../mfa-flows.md) を参照する。
 
 ## ローカル検証
 
