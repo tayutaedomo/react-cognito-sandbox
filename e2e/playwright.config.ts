@@ -18,7 +18,8 @@ export default defineConfig({
   workers: 1,
   use: {
     baseURL: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:5173',
-    trace: 'on-first-retry',
+    // 実 Cognito のトレースにパスワード・TOTP コードを記録しない。
+    trace: process.env.VITE_USE_MOCK_COGNITO === 'false' ? 'off' : 'on-first-retry',
   },
   projects: [
     {

@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { completeTotp } from '../helpers/complete-totp';
 
 test.describe('Profile Editing Flow', () => {
   test.skip(
@@ -8,8 +9,6 @@ test.describe('Profile Editing Flow', () => {
 
   test('ログインしてプロフィールを編集・保存できること', async ({ page }) => {
     
-    page.on('console', msg => console.log('BROWSER CONSOLE:', msg.text()));
-    page.on('console', msg => console.log('BROWSER CONSOLE:', msg.text()));
     await page.goto('/');
 
     // ログインボタンが表示されているか確認 (すでにログイン済みの場合はスキップ)
@@ -24,6 +23,7 @@ test.describe('Profile Editing Flow', () => {
       await page.fill('#signInFormUsername:visible', testEmail);
       await page.fill('#signInFormPassword:visible', testPassword);
       await page.locator('input[name="signInSubmitButton"]:visible').first().click();
+      await completeTotp(page);
       
       const baseUrl = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:5173';
       await page.waitForURL(`${baseUrl}/**`);

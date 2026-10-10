@@ -39,3 +39,27 @@ terraform apply
 実行には以下の環境変数が設定されている必要があります。（ルートディレクトリの `.envrc` に記載）
 - `AWS_PROFILE`
 - `AWS_REGION`
+
+## MFA POC
+
+`app/variables.tf` の `mfa_configuration` は `OFF`（既定）・`OPTIONAL`・`ON`、`totp_enabled` は既定 `false` です。
+今回の因子は TOTP のみで、`OPTIONAL` / `ON` では `totp_enabled = true` が必要です。
+`OFF` は新規の TOTP 登録を設定せず、ユーザーの登録済み TOTP を削除しません。
+任意 MFA の未登録ユーザー向け画面は次のステップで追加します。
+
+TOTP 必須の plan は `app/` で実行します。User Pool 全体に適用されます。
+
+```bash
+terraform plan -var-file=terraform.tfvars \
+  -var-file=examples/mfa-required.tfvars.example -out=mfa-required.tfplan
+```
+
+ローカル検証は、初期化済みプロバイダーと Node.js 20 以上を使用してプロジェクトルートで実行します。
+
+```bash
+terraform -chdir=terraform/app validate
+node --test terraform/tests/mfa.test.mjs
+```
+
+AWS の資格情報や既存 state を使わず、User Pool 定義の plan と入力エラーを検証します。
+事前確認、適用、初回登録、既存ユーザー・セッションの確認は [MFA POC 手順](../docs/poc/005-mfa-foundation.md) を参照してください。

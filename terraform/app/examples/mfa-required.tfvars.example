@@ -1,0 +1,5 @@
+# terraform/app で実行し、既存 terraform.tfvars と重ねて使用する。
+# terraform plan -var-file=terraform.tfvars -var-file=examples/mfa-required.tfvars.example
+# この設定は User Pool 全体に適用される。
+mfa_configuration = "ON"
+totp_enabled      = true

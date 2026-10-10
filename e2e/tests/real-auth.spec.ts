@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { completeTotp } from '../helpers/complete-totp';
 
 // このテストは本物の Cognito と API Gateway を使用する「実環境」想定のテストです。
 // ※ 実行には VITE_USE_MOCK_COGNITO=false およびテスト用ユーザーの環境変数が必要です。
@@ -11,10 +12,6 @@ test.describe('Real Cognito Authentication Flow', () => {
   );
 
   test('Hosted UI でログインし、ユーザー一覧を取得できること', async ({ page }) => {
-    // コンソール出力をキャプチャしてデバッグ
-    page.on('console', msg => console.log('BROWSER CONSOLE:', msg.text()));
-    page.on('pageerror', err => console.log('BROWSER ERROR:', err.message));
-
     // 1. トップページへアクセス
     await page.goto('/');
     
@@ -40,6 +37,7 @@ test.describe('Real Cognito Authentication Flow', () => {
     
     // signInSubmitButton が複数ある場合を考慮し、可視状態のボタンをクリックする
     await page.locator('input[name="signInSubmitButton"]:visible').first().click();
+    await completeTotp(page);
 
     // 4. localhost にコールバックで戻ってくるのを待つ
     await page.waitForURL('http://localhost:5173/**');

@@ -1,0 +1,124 @@
+# 005: MFA の足場と TOTP 必須
+
+## 目的と範囲
+
+既存の Cognito リダイレクト認証で TOTP の登録・ログイン・API 連携を試す。
+User Pool 方針 (`OFF` / `OPTIONAL` / `ON`) と TOTP 登録の可否を Terraform で設定する。
+任意 MFA の登録画面、端末紛失時の復旧、SMS・メールは対象外。
+
+## ローカル検証
+
+プロジェクトルートで実行する。
+
+```bash
+terraform -chdir=terraform/app init -backend=false -lockfile=readonly
+terraform -chdir=terraform/app validate
+node --test terraform/tests/mfa.test.mjs
+npm --prefix e2e run test:unit
+npm --prefix e2e run test:e2e -- --list
+npm --prefix e2e run test:e2e:real -- --list
+```
+
+Terraform テストは Node.js 20 以上と、`terraform/app` の初期化済みプロバイダーを必要とする。
+実際の User Pool 定義・変数を一時ディレクトリに取り出し、空の state から `plan -refresh=false` を実行する。
+プロバイダーの認証確認とメタデータ取得を無効化し、ダミー認証情報を指定するため、AWS の接続・資格情報は不要。
+既存 state・利用者の tfvars を変更せず、一時ファイルはテスト終了時に削除する。
+ただし、アプリ全体の plan や AWS での実際の登録動作を保証するテストではない。
+
+## 実環境の事前確認
+
+AWS 設定の読み取りも有効な SSO セッションが必要。プロファイル・リージョンは対象環境に合わせる。
+
+```bash
+aws sso login --profile <AWS_PROFILE>
+export AWS_PROFILE=<AWS_PROFILE>
+export AWS_REGION=ap-northeast-1
+```
+
+Cognito コンソールまたは CLI で以下を確認する。
+
+- User Pool の MFA 設定、TOTP の有効状態、機能プラン。
+- ドメインの画面バージョン（Hosted UI classic / Managed Login）。Terraform の CSS カスタマイズは classic 用で、README の呼称だけでは実環境の画面を判定しない。
+- MFA 登録用と登録済み E2E 用の専用テストユーザー。既存ユーザーも `ON` の対象になる。
+- テストユーザーのメール検証・初期パスワード設定が完了していること。
+- Terraform state の所在。ローカルの `terraform output` が空の場合は、既存リソースの state を確認してから進める。空の state からの新規作成を意図しないまま apply しない。
+
+```bash
+# <POOL_ID> と <DOMAIN_PREFIX> を対象環境の値に置き換える。
+aws cognito-idp describe-user-pool --user-pool-id <POOL_ID> \
+  --query 'UserPool.{Mfa:MfaConfiguration,Tier:UserPoolTier,Recovery:AccountRecoverySetting,Domain:Domain}'
+aws cognito-idp get-user-pool-mfa-config --user-pool-id <POOL_ID>
+aws cognito-idp describe-user-pool-domain --domain <DOMAIN_PREFIX> \
+  --query 'DomainDescription.{Version:ManagedLoginVersion,Pool:UserPoolId}'
+```
+
+## TOTP 必須への切り替え
+
+`terraform/app` で、既存の環境設定と POC 用設定を重ねる。
+
+```bash
+terraform plan -var-file=terraform.tfvars \
+  -var-file=examples/mfa-required.tfvars.example -out=mfa-required.tfplan
+```
+
+User Pool が置き換えにならず、MFA 関連の更新を含むことを確認する。
+他リソースへの変更が出た場合は理由を確認する。
+適用内容を確認してから実行する。
+
+```bash
+terraform apply mfa-required.tfplan
+```
+
+デフォルトの `OFF` に戻す場合も plan を確認する。
+`totp_enabled = false` だけでは、ユーザーの登録済み TOTP を削除できない。
+既存の検証環境が `OPTIONAL` 等の場合は元の値を記録し、その値に戻す。
+
+## 手動検証
+
+`frontend/.env` の実 Cognito・API 接続設定でアプリを起動する。
+因子を確認するときは新しいブラウザコンテキストを使い、既存のログインセッションの再利用を区別する。
+
+1. **既存・未登録ユーザー**: パスワード入力後の QR コード／シークレット表示、認証アプリ登録、6桁コードの検証、アプリへの復帰を確認する。
+2. **新規ユーザー**: 許可されている登録方法でユーザーを作り、メール検証・初期パスワードと TOTP 登録の順序を記録する。
+3. **登録済みユーザー**: サインアウトし、新しいブラウザコンテキストで再ログイン。TOTP 入力が必要なこと、成功後に `Fetch Users` が成功することを確認する。
+4. **誤入力**: コードを1回誤入力し、認証完了せず、正しいコードで再試行できることを確認する。ロックアウトの詳細は対象外。
+5. **既存セッション**: MFA 有効化前のセッションや再訪時にコードが再要求されるかを別に記録する。毎回のページ表示を再認証とみなさない。
+
+初回認証には一時トークン等の特別な挙動があるため、「ON なら必ずすべての初回遷移で TOTP 入力済み」と推定しない。
+詳細は [AWS の TOTP 仕様](https://docs.aws.amazon.com/cognito/latest/developerguide/user-pool-settings-mfa-totp.html) を参照。
+QR コード・シークレット・入力コード・JWT をスクリーンショットや検証記録へ貼り付けない。
+
+## 登録済みユーザーの E2E
+
+専用ユーザーの初回登録を手動で終え、登録時の Base32 シークレットを `e2e/.env.e2e` の `TEST_USER_TOTP_SECRET` に設定する。
+このユーザーの TOTP は認証アプリにも保持しておく。シークレットはパスワードと同様に Git 管理しない。
+実環境テストは User Pool 全体の設定を変更せず、登録済みユーザーのログインを行う。
+
+```bash
+npm --prefix e2e run test:e2e:real
+```
+
+シークレットがある場合、パスワード送信後に TOTP 入力を必須として待機する。
+ない場合は従来のパスワード認証を維持するため、MFA 有効ユーザーではコールバック待機に失敗する。
+初回登録画面と登録済みの入力画面は異なる。自動登録や登録中断からの復旧はこの E2E に含めない。
+現在のセレクターは実環境で未確認であり、画面バージョンを確認して実行する。
+実 Cognito のトレースを無効にして認証情報の記録を避ける。`--trace on` で上書きしない。
+
+## 検証結果・未確認事項
+
+| 項目 | 結果 |
+| --- | --- |
+| Terraform validate | 成功 |
+| 既定 OFF、OFF＋TOTP、OPTIONAL＋TOTP、ON＋TOTP | AWS 非接続 plan テスト4件成功 |
+| 因子なしの OPTIONAL / ON、不正なモード3種類 | エラー検証5件成功 |
+| TOTP 生成 | RFC 6238 SHA-1 の標準値、時刻境界、不正入力を含む単体テスト9件成功 |
+| E2E シナリオの読み込み | 成功 |
+| モック E2E | 1件成功。frontend/backend の起動・終了を含めて確認 |
+| 既存バックエンド単体テスト | 6件成功 |
+| 追加した JavaScript / TypeScript の静的解析 | oxlint 成功 |
+| 実環境のプラン・画面・MFA 状態 | Essentials、Hosted UI classic（1）、MFA ON、TOTP 有効、メール復旧を確認 |
+| アプリ全体の実環境 plan / apply | 適用後の plan 差分なし |
+| 初回登録・再ログイン・誤入力・API 連携 | 実環境で未確認 |
+| 画面移行、プラン変更、SMS・メール・任意登録 UI・復旧 | 今回の対象外 |
+
+関連: [ADR 0008 草案](../adr/0008-mfa-poc-foundation.md)、[Terraform](../../terraform/README.md)、[E2E](../../e2e/README.md)
