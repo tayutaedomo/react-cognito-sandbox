@@ -60,6 +60,13 @@ terraform apply
 任意 MFA の登録・設定画面は [POC 006](../docs/poc/006-optional-mfa.md) を参照してください。
 任意 POC には `examples/mfa-optional.tfvars.example` を使用します。
 
+`app/terraform.tfvars.example` は環境全体の設定テンプレート、`app/examples/mfa-*.tfvars.example` は MFA の2項目だけを切り替える設定例です。
+環境固有の URL やプロジェクト名を複製せず、同じ環境で必須・任意を試すために分けています。
+Terraform がこの分割を要求するわけではなく、MFA の値を `terraform.tfvars` に直接設定しても構いません。
+`.example` は説明用の命名で自動読込されません。複数の `-var-file` では後に指定した値を優先します。
+設定例を重ねて適用した場合は、次の plan / apply でも同じ設定例を指定するか、MFA の値を `terraform.tfvars` に反映します。
+設定例を省略すると、環境ファイルに残っている MFA 方針へ戻す差分が出る場合があります。
+
 TOTP 必須の plan は `app/` で実行します。User Pool 全体に適用されます。
 
 ```bash

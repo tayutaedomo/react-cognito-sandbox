@@ -7,7 +7,12 @@ TOTP の初回登録と通常ログインの流れは [MFA の認証フロー](.
 ## 目次
 
 - [認証・API の構成](#認証api-の構成)
+  - [サインインと本人の属性管理](#サインインと本人の属性管理)
+  - [API の認証とユーザー一覧](#api-の認証とユーザー一覧)
+  - [MFA の設定](#mfa-の設定)
 - [配信・ログの構成](#配信ログの構成)
+  - [フロントエンド配信と WAF](#フロントエンド配信と-waf)
+  - [ログと監査](#ログと監査)
 - [ローカル開発・テスト](#ローカル開発テスト)
 - [インフラとデプロイ](#インフラとデプロイ)
 
@@ -41,11 +46,18 @@ flowchart TD
     Lambda -->|ListUsers via boto3| Cognito
 ```
 
+### サインインと本人の属性管理
+
 - フロントエンドは Amplify Auth を通じて Cognito のログイン画面へ遷移し、取得した JWT を API リクエストに付与します。
+- 属性編集はフロントエンドから Amplify Auth の `updateUserAttributes` を通じて Cognito に送信します。
+
+### API の認証とユーザー一覧
+
 - API Gateway の JWT Authorizer が認証を担い、FastAPI は Lambda Web Adapter 経由で動作します。
 - `GET /api/health` と CORS プリフライト用の `OPTIONS /api/{proxy+}` は、JWT 認証を要求しないルートとして定義されています。
 - バックエンドは IAM ロールの権限で Cognito の `ListUsers` を呼び出します。ユーザー情報は Cognito 内で管理します。
-- 属性編集はフロントエンドから Amplify Auth の `updateUserAttributes` を通じて Cognito に送信します。
+### MFA の設定
+
 - MFA は Terraform で `OFF` / `OPTIONAL` / `ON` と TOTP を設定可能です。デフォルトは無効で、必須・任意それぞれの POC 用設定例を用意しています。
 - 任意 MFA では、ログイン後の「MFA 設定」画面から Amplify Auth と Access トークンを使い、TOTP 登録・有効化・無効化を行います。QR はブラウザ内で生成します。バックエンドの管理者 API は使用しません。
 - 必須 MFA の検証は [POC 005](./poc/005-mfa-foundation.md)、任意 MFA の操作・検証は [POC 006](./poc/006-optional-mfa.md) を参照してください。
@@ -70,8 +82,12 @@ flowchart LR
     Backend -->|Application Logs| Logs
 ```
 
+### フロントエンド配信と WAF
+
 - フロントエンドのビルド成果物は `frontend/scripts/deploy.sh` から Amplify Hosting へアップロードします。
 - Terraform は Amplify Hosting に関連付ける WAF Web ACL と、その CloudWatch Logs 出力先を定義しています。現在の Web ACL はデフォルト許可で、ブロック用ルールは定義されていません。
+### ログと監査
+
 - API Gateway のアクセスログには、リクエスト情報・`sub`・認可エラーの出力項目を設定しています。
 - FastAPI は Lambda Powertools を利用して JSON 形式のアプリケーションログを出力します。
 - 監査ログの設計方針は [ADR 0005](./adr/0005-audit-logging-strategy.md)、Cognito 側の防御策の検討は [ADR 0006](./adr/0006-cognito-security-and-waf-strategy.md) に記録しています。

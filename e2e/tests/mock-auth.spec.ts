@@ -11,18 +11,23 @@ test.describe('Mock Auth and API E2E', () => {
     await page.getByRole('button', { name: 'ログイン / 登録 / パスワード再設定 (Managed Login)' }).click();
     await page.getByRole('button', { name: 'MFA 設定', exact: true }).click();
     await expect(page.getByTestId('mfa-status')).toHaveText('TOTP：無効');
+    await page.screenshot({ path: 'test-results/screenshots/04-mfa-disabled.png', fullPage: true });
     await page.getByRole('button', { name: '登録済みの認証アプリを有効にする' }).click();
     await expect(page.getByRole('alert')).toContainText('登録');
     await page.getByRole('button', { name: '認証アプリを登録する', exact: true }).click();
     await expect(page.getByRole('img', { name: '認証アプリ登録用 QR コード' })).toBeVisible();
+    // モックの固定シークレットのみ撮影する。実 Cognito の QR は撮影しない。
+    await page.screenshot({ path: 'test-results/screenshots/05-mfa-registration-mock.png', fullPage: true });
     await page.getByLabel('認証アプリの6桁コード').fill('000000');
     await page.getByRole('button', { name: 'コードを確認して有効にする' }).click();
     await expect(page.getByRole('alert')).toContainText('コードが一致しません');
+    await page.screenshot({ path: 'test-results/screenshots/06-mfa-invalid-code.png', fullPage: true });
     await page.getByLabel('認証アプリの6桁コード').fill('123456');
     await page.getByRole('button', { name: 'コードを確認して有効にする' }).click();
     await expect(page.getByTestId('mfa-status')).toHaveText('TOTP：有効（優先方式）');
     await expect(page.getByTestId('totp-secret')).toHaveCount(0);
     await expect(page.getByRole('img')).toHaveCount(0);
+    await page.screenshot({ path: 'test-results/screenshots/07-mfa-enabled.png', fullPage: true });
     await page.getByRole('button', { name: 'TOTP を無効にする' }).click();
     await expect(page.getByTestId('mfa-status')).toHaveText('TOTP：無効');
     await page.getByRole('button', { name: '登録済みの認証アプリを有効にする' }).click();

@@ -39,6 +39,10 @@ frontend は `VITE_USE_MOCK_COGNITO=true` とローカル API、backend は `USE
 ローカルでは既に起動したサーバーを再利用します。再利用する場合はモードと接続先を確認してください。
 自動起動と終了を含めて確認する場合は、両ポートが空いている状態で `CI=1 npm --prefix e2e run test:e2e` を実行します。
 
+`CI=1` は、そのコマンドの実行中だけ環境変数 `CI` を設定する記法です。
+このプロジェクトでは `reuseExistingServer: !process.env.CI` により既存サーバーの再利用を禁止し、テスト用の設定で起動します。
+外部の CI サービスへ送信する操作ではありません。値は文字列として判定されるため、`CI=0` でも再利用を禁止します。再利用する場合は `CI` を未設定にします。
+
 ## 実環境 (Cognito)
 
 AWS 上のインフラとテスト用ユーザーを用意し、`frontend/.env` に Cognito と API Gateway の接続設定を記載します。
@@ -78,6 +82,11 @@ npm --prefix e2e run test:unit
 
 MFA OPTIONAL のプールと、設定を変更してよい専用ユーザーを使用します。
 Git 管理外の `e2e/.env.mfa-optional` に `MFA_OPTIONAL_USER_EMAIL` と `MFA_OPTIONAL_USER_PASSWORD` を設定します。
+両方を既存の `e2e/.env.e2e` に記載しても実行できます。
+`.env.mfa-optional` は環境別ファイルではなく、ユーザーの設定を変更するテストの専用資格情報を分ける任意の補助ファイルです。
+読み込み順はシェルの環境変数、`.env.e2e`、`.env.mfa-optional` で、先に設定された値は後のファイルで上書きしません。
+同名の変数は一方のファイルにだけ記載します。空文字も設定済みとして扱うため、設定例の空欄を `.env.e2e` に残すと補助ファイルの値は読み込まれません。補助ファイルを使う場合は、該当する2変数を `.env.e2e` から除きます。
+POC ごとにファイル追加を必須とする運用ではありません。
 
 ```bash
 CI=1 npm --prefix e2e run test:e2e:mfa-optional
@@ -100,5 +109,7 @@ npm --prefix e2e run test:e2e:real -- --list
 
 `e2e/test-results/` にスクリーンショット・トレース、`e2e/playwright-report/` に HTML レポートを出力します。
 いずれも Git の管理対象から除外しています。
+モック MFA テストは `test-results/screenshots/` に無効状態・登録画面・誤コード・有効状態のキャプチャを出力します。
+登録画面の QR はモック専用の固定値です。実 Cognito の登録画面はキャプチャしません。
 
 [プロジェクト README へ戻る](../README.md)
