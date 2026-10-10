@@ -10,9 +10,10 @@ export async function completeTotp(page: Page) {
     'input[name="totpCode"]:visible, input[name="softwareTokenMfaCode"]:visible, input[autocomplete="one-time-code"]:visible',
   ).or(page.getByRole('textbox', { name: /code|コード/i })).first();
   await expect(codeInput, '登録済みユーザーの TOTP 入力画面が必要です。初回登録は手動で完了してください。').toBeVisible();
-  // 有効期間末尾のコード送信を避ける。固定コードを環境変数で受け取らない。
+  // Cognito は使用済み TOTP の再利用を拒否する。同じユーザーの連続テストでは
+  // 次の30秒枠のコードを使い、直前の登録や別シナリオと同じコードを送らない。
   const remaining = 30_000 - Date.now() % 30_000;
-  if (remaining < 5000) await new Promise(resolve => setTimeout(resolve, remaining + 100));
+  await new Promise(resolve => setTimeout(resolve, remaining + 500));
   await codeInput.fill(generateTotp(secret));
   await page.getByRole('button', { name: /confirm|verify|sign in|submit|確認|検証|ログイン|送信/i }).first().click();
 }

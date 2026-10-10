@@ -12,6 +12,7 @@ test.describe('Real Cognito Authentication Flow', () => {
   );
 
   test('Hosted UI でログインし、ユーザー一覧を取得できること', async ({ page }) => {
+    test.setTimeout(60_000); // 使用済み TOTP を避けるため、次の30秒枠を待つ。
     // 1. トップページへアクセス
     await page.goto('/');
     
@@ -39,8 +40,9 @@ test.describe('Real Cognito Authentication Flow', () => {
     await page.locator('input[name="signInSubmitButton"]:visible').first().click();
     await completeTotp(page);
 
-    // 4. localhost にコールバックで戻ってくるのを待つ
-    await page.waitForURL('http://localhost:5173/**');
+    // 4. テスト対象のアプリへコールバックで戻ってくるのを待つ
+    const baseUrl = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:5173';
+    await page.waitForURL(`${baseUrl}/**`);
     await page.waitForLoadState('networkidle');
     await page.screenshot({ path: 'test-results/screenshots/real-03-after-callback.png' });
 

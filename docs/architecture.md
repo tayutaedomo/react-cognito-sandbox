@@ -37,7 +37,7 @@ flowchart TD
 - `GET /api/health` と CORS プリフライト用の `OPTIONS /api/{proxy+}` は、JWT 認証を要求しないルートとして定義されています。
 - バックエンドは IAM ロールの権限で Cognito の `ListUsers` を呼び出します。ユーザー情報は Cognito 内で管理します。
 - 属性編集はフロントエンドから Amplify Auth の `updateUserAttributes` を通じて Cognito に送信します。
-- MFA は Terraform で `OFF` / `OPTIONAL` / `ON` と TOTP を設定可能です。デフォルトは無効で、TOTP 必須の設定例と登録済みユーザー向け E2E を用意しています。実環境での登録・ログインは [POC 005](./poc/005-mfa-foundation.md) の手順で検証します。
+- MFA は Terraform で `OFF` / `OPTIONAL` / `ON` と TOTP を設定可能です。デフォルトは無効で、POC 用設定により TOTP 必須を適用します。Essentials プラン・Hosted UI classic（バージョン1）の実環境で、TOTP 登録・再ログイン・API 連携を検証しています。初回の QR 登録手順と結果は [POC 005](./poc/005-mfa-foundation.md) を参照してください。
 
 ## 配信・ログの構成
 

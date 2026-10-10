@@ -8,6 +8,7 @@ test.describe('Profile Editing Flow', () => {
   );
 
   test('ログインしてプロフィールを編集・保存できること', async ({ page }) => {
+    test.setTimeout(60_000); // 使用済み TOTP を避けるため、次の30秒枠を待つ。
     
     await page.goto('/');
 

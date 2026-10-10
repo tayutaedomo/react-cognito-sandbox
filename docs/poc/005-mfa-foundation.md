@@ -52,6 +52,9 @@ aws cognito-idp describe-user-pool-domain --domain <DOMAIN_PREFIX> \
   --query 'DomainDescription.{Version:ManagedLoginVersion,Pool:UserPoolId}'
 ```
 
+古い AWS CLI では `UserPoolTier` / `ManagedLoginVersion` が `null` になる場合がある。
+`null` だけで設定なしと判断せず、コンソールまたは新しい SDK の結果を使う。
+
 ## TOTP 必須への切り替え
 
 `terraform/app` で、既存の環境設定と POC 用設定を重ねる。
@@ -99,9 +102,11 @@ npm --prefix e2e run test:e2e:real
 ```
 
 シークレットがある場合、パスワード送信後に TOTP 入力を必須として待機する。
+同じユーザーの使用済みコードを再送すると Cognito が拒否するため、次の30秒枠を待ってコードを生成する。
+ログインを含むテストの制限時間は、この待機を含めて60秒とする。
 ない場合は従来のパスワード認証を維持するため、MFA 有効ユーザーではコールバック待機に失敗する。
 初回登録画面と登録済みの入力画面は異なる。自動登録や登録中断からの復旧はこの E2E に含めない。
-現在のセレクターは実環境で未確認であり、画面バージョンを確認して実行する。
+現在のセレクターは Hosted UI classic（バージョン1）で確認する。Managed Login バージョン2は未検証。
 実 Cognito のトレースを無効にして認証情報の記録を避ける。`--trace on` で上書きしない。
 
 ## 検証結果・未確認事項
@@ -113,12 +118,16 @@ npm --prefix e2e run test:e2e:real
 | 因子なしの OPTIONAL / ON、不正なモード3種類 | エラー検証5件成功 |
 | TOTP 生成 | RFC 6238 SHA-1 の標準値、時刻境界、不正入力を含む単体テスト9件成功 |
 | E2E シナリオの読み込み | 成功 |
+| ローカル frontend → 実 AWS の E2E | TOTP ログイン・API 呼び出し、プロフィール編集、パスワード再設定画面到達の3件成功。モック用1件スキップ |
+| 公開した Amplify frontend → 実 AWS の E2E | 同じ3件成功、モック用1件スキップ。公開 URL への OAuth コールバックも確認 |
 | モック E2E | 1件成功。frontend/backend の起動・終了を含めて確認 |
 | 既存バックエンド単体テスト | 6件成功 |
 | 追加した JavaScript / TypeScript の静的解析 | oxlint 成功 |
 | 実環境のプラン・画面・MFA 状態 | Essentials、Hosted UI classic（1）、MFA ON、TOTP 有効、メール復旧を確認 |
 | アプリ全体の実環境 plan / apply | 適用後の plan 差分なし |
-| 初回登録・再ログイン・誤入力・API 連携 | 実環境で未確認 |
+| TOTP の初回登録 | Amplify の SRP / MFA_SETUP 経由で登録・検証 |
+| 再ログイン・誤入力・API 連携 | 新規ログインの TOTP 要求、誤コードの拒否と正コードの再試行、認証済み API 200、未認証 API 401 を実測 |
+| コードの再利用 | 連続したブラウザテストで使用済みコードの拒否を確認し、次の30秒枠を使うよう E2E を修正 |
 | 画面移行、プラン変更、SMS・メール・任意登録 UI・復旧 | 今回の対象外 |
 
 関連: [ADR 0008 草案](../adr/0008-mfa-poc-foundation.md)、[Terraform](../../terraform/README.md)、[E2E](../../e2e/README.md)
