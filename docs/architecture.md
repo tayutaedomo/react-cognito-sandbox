@@ -2,6 +2,14 @@
 
 リポジトリのアプリケーションと Terraform に定義された現在の構成を示します。
 各 POC の検証結果・制約は [POC 一覧](./poc/README.md)、設計判断の理由は [ADR](./adr/) を参照してください。
+TOTP の初回登録と通常ログインの流れは [MFA の認証フロー](./mfa-flows.md) に図解しています。
+
+## 目次
+
+- [認証・API の構成](#認証api-の構成)
+- [配信・ログの構成](#配信ログの構成)
+- [ローカル開発・テスト](#ローカル開発テスト)
+- [インフラとデプロイ](#インフラとデプロイ)
 
 ## 認証・API の構成
 
@@ -37,6 +45,7 @@ flowchart TD
 - `GET /api/health` と CORS プリフライト用の `OPTIONS /api/{proxy+}` は、JWT 認証を要求しないルートとして定義されています。
 - バックエンドは IAM ロールの権限で Cognito の `ListUsers` を呼び出します。ユーザー情報は Cognito 内で管理します。
 - 属性編集はフロントエンドから Amplify Auth の `updateUserAttributes` を通じて Cognito に送信します。
+- MFA は Terraform で `OFF` / `OPTIONAL` / `ON` と TOTP を設定可能です。デフォルトは無効で、POC 用設定により TOTP 必須を適用します。Essentials プラン・Hosted UI classic（バージョン1）の実環境で、TOTP 登録・再ログイン・API 連携を検証しています。初回の QR 登録手順と結果は [POC 005](./poc/005-mfa-foundation.md) を参照してください。
 
 ## 配信・ログの構成
 

@@ -24,3 +24,20 @@ variable "allow_admin_create_user_only" {
   type        = bool
   default     = false
 }
+
+variable "mfa_configuration" {
+  description = "Cognito MFA policy: OFF, OPTIONAL, or ON (required)"
+  type        = string
+  default     = "OFF"
+
+  validation {
+    condition     = contains(["OFF", "OPTIONAL", "ON"], var.mfa_configuration)
+    error_message = "mfa_configuration must be OFF, OPTIONAL, or ON."
+  }
+}
+
+variable "totp_enabled" {
+  description = "Allow users to register an authenticator app for TOTP MFA"
+  type        = bool
+  default     = false
+}

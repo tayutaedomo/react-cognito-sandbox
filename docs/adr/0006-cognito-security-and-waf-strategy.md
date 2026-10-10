@@ -1,5 +1,14 @@
 # ADR 0006: Cognito セキュリティとログインアタック防御・ログ戦略
 
+## 目次
+
+- [1. コンテキストと背景](#1-コンテキストと背景)
+- [2. 検討した選択肢](#2-検討した選択肢)
+  - [オプション A: Cognito への AWS WAF アタッチ](#オプション-a-cognito-への-aws-waf-アタッチ)
+  - [オプション B: Cognito Advanced Security Features (CASF) の有効化](#オプション-b-cognito-advanced-security-features-casf-の有効化)
+- [3. 決定事項](#3-決定事項)
+- [4. 影響と今後のアクション](#4-影響と今後のアクション)
+
 ## 1. コンテキストと背景
 
 現在のアーキテクチャでは、フロントエンド (Amplify) へのトラフィックは WAF (us-east-1) で、API へのトラフィックは API Gateway のアクセスログと Lambda の JSON 構造化ログ (Powertools) で追跡・保護しています。

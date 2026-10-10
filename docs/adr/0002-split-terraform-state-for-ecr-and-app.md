@@ -2,6 +2,15 @@
 
 Date: 2026-09-20
 
+## 目次
+
+- [Status](#status)
+- [Context](#context)
+- [Decision](#decision)
+- [Consequences](#consequences)
+  - [Positive](#positive)
+  - [Negative](#negative)
+
 ## Status
 
 Proposed

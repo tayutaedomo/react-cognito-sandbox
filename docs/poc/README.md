@@ -12,6 +12,7 @@
 | [002: ログイン画面・ユーザー属性の制約](./002-login-ui-user-attributes.md) | デザイン、自己サインアップ制限、属性編集 | 画面のカスタマイズと登録制限を検証し、属性編集のスコープ・更新仕様の制約を記録 |
 | [003: 監査ログ](./003-audit-logging.md) | ユーザー識別、構造化ログ、PII 方針 | API Gateway と FastAPI による監査ログと、個人情報を記録しない方針を整理 |
 | [004: フロントエンド配信・WAF](./004-frontend-hosting-waf.md) | Hosting、デプロイ、WAF | Amplify Hosting へのデプロイと、WAF の関連付け・ログ出力を実装 |
+| [005: MFA の足場と TOTP 必須](./005-mfa-foundation.md) | MFA 方針、TOTP、検証手順 | TOTP 登録・再ログイン・誤入力・API 連携を実環境で検証。Google Authenticator による TOTP サインインを確認 |
 
 ## 新しい POC の記録
 

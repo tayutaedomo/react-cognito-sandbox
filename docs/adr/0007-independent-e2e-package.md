@@ -2,6 +2,14 @@
 
 Date: 2026-10-09
 
+## 目次
+
+- [Status](#status)
+- [Context](#context)
+- [Decision](#decision)
+- [Alternatives](#alternatives)
+- [Consequences](#consequences)
+
 ## Status
 
 Accepted

@@ -4,6 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "test:unit": "node --test unit/*.test.mjs",
     "test:e2e": "VITE_USE_MOCK_COGNITO=true playwright test tests/mock-auth.spec.ts",
     "test:e2e:real": "VITE_USE_MOCK_COGNITO=false playwright test tests/"
   },

@@ -41,6 +41,23 @@ resource "random_string" "suffix" {
 resource "aws_cognito_user_pool" "main" {
   name = "react-cognito-sandbox-pool"
 
+  mfa_configuration = var.mfa_configuration
+
+  # OFF の間は設定ブロックを省略する。登録済み TOTP の削除は行わない。
+  dynamic "software_token_mfa_configuration" {
+    for_each = var.mfa_configuration != "OFF" && var.totp_enabled ? [true] : []
+    content {
+      enabled = true
+    }
+  }
+
+  lifecycle {
+    precondition {
+      condition     = var.mfa_configuration == "OFF" || var.totp_enabled
+      error_message = "Enable totp_enabled when MFA is OPTIONAL or ON; TOTP is the only supported factor in this POC."
+    }
+  }
+
   admin_create_user_config {
     allow_admin_create_user_only = var.allow_admin_create_user_only
   }
@@ -94,7 +111,7 @@ resource "aws_cognito_user_pool_client" "main" {
   # OAuth フロー（Authorization Code Grant）を有効化し、認証後にコードを返すように設定
   allowed_oauth_flows_user_pool_client = true
   allowed_oauth_flows                  = ["code"]
-  
+
   # 取得するトークンに含まれる情報（スコープ）の定義
   # - openid: OpenID Connect 準拠の ID トークンを取得するために必須
   # - email: ユーザーのメールアドレス属性にアクセスするために必要
@@ -240,16 +257,16 @@ resource "aws_apigatewayv2_stage" "default" {
   access_log_settings {
     destination_arn = aws_cloudwatch_log_group.api_gw_access_log.arn
     format = jsonencode({
-      requestId             = "$context.requestId"
-      sourceIp              = "$context.identity.sourceIp"
-      requestTime           = "$context.requestTime"
-      httpMethod            = "$context.httpMethod"
-      routeKey              = "$context.routeKey"
-      status                = "$context.status"
-      protocol              = "$context.protocol"
-      responseLength        = "$context.responseLength"
-      cognitoSub            = "$context.authorizer.claims.sub"
-      authorizerError       = "$context.authorizer.error"
+      requestId       = "$context.requestId"
+      sourceIp        = "$context.identity.sourceIp"
+      requestTime     = "$context.requestTime"
+      httpMethod      = "$context.httpMethod"
+      routeKey        = "$context.routeKey"
+      status          = "$context.status"
+      protocol        = "$context.protocol"
+      responseLength  = "$context.responseLength"
+      cognitoSub      = "$context.authorizer.claims.sub"
+      authorizerError = "$context.authorizer.error"
     })
   }
 }
