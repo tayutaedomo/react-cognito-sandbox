@@ -162,6 +162,7 @@ npm --prefix e2e run test:e2e:real
 | 実環境のプラン・画面・MFA 状態 | Essentials、Hosted UI classic（1）、MFA ON、TOTP 有効、メール復旧を確認 |
 | アプリ全体の実環境 plan / apply | 適用後の plan 差分なし |
 | TOTP の初回登録 | Amplify の SRP / MFA_SETUP 経由で登録・検証 |
+| Google Authenticator による手動サインイン | TOTP サインイン成功を確認 |
 | 再ログイン・誤入力・API 連携 | 新規ログインの TOTP 要求、誤コードの拒否と正コードの再試行、認証済み API 200、未認証 API 401 を実測 |
 | コードの再利用 | 連続したブラウザテストで使用済みコードの拒否を確認し、次の30秒枠を使うよう E2E を修正 |
 | 画面移行、プラン変更、SMS・メール・任意登録 UI・復旧 | 今回の対象外 |
