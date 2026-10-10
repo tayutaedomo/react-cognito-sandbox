@@ -8,7 +8,8 @@
     "test:e2e": "VITE_USE_MOCK_COGNITO=true playwright test tests/mock-auth.spec.ts",
     "test:e2e:real": "VITE_USE_MOCK_COGNITO=false playwright test tests/",
     "test:e2e:mfa-optional": "VITE_USE_MOCK_COGNITO=false RUN_MFA_OPTIONAL_E2E=true playwright test tests/mfa-optional.spec.ts",
-    "test:e2e:mfa-recovery": "VITE_USE_MOCK_COGNITO=false RUN_MFA_RECOVERY_E2E=true playwright test tests/mfa-recovery.spec.ts"
+    "test:e2e:mfa-recovery": "VITE_USE_MOCK_COGNITO=false RUN_MFA_RECOVERY_E2E=true playwright test tests/mfa-recovery.spec.ts",
+    "test:e2e:mfa-device": "VITE_USE_MOCK_COGNITO=false RUN_MFA_DEVICE_E2E=true playwright test tests/mfa-device.spec.ts"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",

@@ -1,0 +1,4 @@
+# 既存の terraform.tfvars に重ねる、信頼するデバイス POC の設定。
+mfa_configuration       = "OPTIONAL"
+totp_enabled            = true
+device_tracking_enabled = true

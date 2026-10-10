@@ -51,10 +51,22 @@ resource "aws_cognito_user_pool" "main" {
     }
   }
 
+  dynamic "device_configuration" {
+    for_each = var.device_tracking_enabled ? [true] : []
+    content {
+      challenge_required_on_new_device      = true
+      device_only_remembered_on_user_prompt = true
+    }
+  }
+
   lifecycle {
     precondition {
       condition     = var.mfa_configuration == "OFF" || var.totp_enabled
       error_message = "Enable totp_enabled when MFA is OPTIONAL or ON; TOTP is the only supported factor in this POC."
+    }
+    precondition {
+      condition     = !var.device_tracking_enabled || (var.mfa_configuration != "OFF" && var.totp_enabled)
+      error_message = "Enable MFA and TOTP when device_tracking_enabled is true."
     }
   }
 
