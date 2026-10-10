@@ -43,11 +43,13 @@ cd ..
 **モック：認証・MFA 設定と Users API の両方をローカルで確認する**
 
 ```mermaid
-flowchart TD
+flowchart TB
     subgraph Local["ローカル PC"]
+        direction TB
         P["Playwright"]
         F["frontend 開発サーバー<br/>5173番"]
         subgraph Browser["ブラウザ"]
+            direction TB
             R["React アプリ"]
             A["MockAuthProvider<br/>認証・MFA のモック"]
         end
@@ -64,11 +66,13 @@ flowchart TD
 **実 Cognito：認証・MFA 設定と Users API の接続先が AWS に変わる**
 
 ```mermaid
-flowchart TD
+flowchart TB
     subgraph Local["ローカル PC"]
+        direction TB
         P["Playwright"]
         F["frontend 開発サーバー<br/>5173番"]
         subgraph Browser["ブラウザ"]
+            direction TB
             R["React アプリ"]
             A["Amplify Auth"]
         end
@@ -80,6 +84,7 @@ flowchart TD
         R <-->|サインイン・MFA 設定| A
     end
     subgraph AWS["AWS"]
+        direction TB
         C["Cognito<br/>ログイン画面・本人の設定 API"]
         G["API Gateway<br/>JWT 検証"]
         L["Lambda / FastAPI"]
@@ -160,11 +165,11 @@ cp e2e/.env.e2e.example e2e/.env.e2e
 
 | 目的 | 必要な準備 | 実行するスクリプト | AWS 上で変更される状態 |
 | --- | --- | --- | --- |
-| [画面と API 連携をローカルで確認](#aws-なしで画面と-api-連携を確認する) | ローカルの依存関係のみ | `test:e2e` | なし。モック内の状態を変更 |
-| [実 Cognito のサインイン・属性編集](#実-cognito-でサインインと属性編集を確認する) | AWS 接続設定・通常のテストユーザー | `test:e2e:real` | テストユーザーの名前・電話番号 |
-| [登録済み TOTP のサインイン](#登録済み-totp-でサインインを確認する) | 上記に加えて登録済み TOTP のシークレット | `test:e2e:real` | 同じスイートで名前・電話番号も更新。TOTP 登録は変更しない |
-| [任意 TOTP の登録・設定変更](#任意-totp-の登録無効化再有効化を確認する) | OPTIONAL のプール・専用ユーザー | `test:e2e:mfa-optional` | TOTP 登録・有効設定。正常終了時は無効に戻す |
-| [TOTP コード生成だけを確認](#totp-コード生成だけを単体テストする) | Node パッケージの依存関係のみ | `test:unit` | なし。ブラウザも起動しない |
+| [AWS なしで画面と API 連携を確認する](#aws-なしで画面と-api-連携を確認する) | ローカルの依存関係のみ | `test:e2e` | なし。モック内の状態を変更 |
+| [実 Cognito でサインインと属性編集を確認する](#実-cognito-でサインインと属性編集を確認する) | AWS 接続設定・通常のテストユーザー | `test:e2e:real` | テストユーザーの名前・電話番号 |
+| [登録済み TOTP でサインインを確認する](#登録済み-totp-でサインインを確認する) | 上記に加えて登録済み TOTP のシークレット | `test:e2e:real` | 同じスイートで名前・電話番号も更新。TOTP 登録は変更しない |
+| [任意 TOTP の登録・無効化・再有効化を確認する](#任意-totp-の登録無効化再有効化を確認する) | OPTIONAL のプール・専用ユーザー | `test:e2e:mfa-optional` | TOTP 登録・有効設定。正常終了時は無効に戻す |
+| [TOTP コード生成だけを単体テストする](#totp-コード生成だけを単体テストする) | Node パッケージの依存関係のみ | `test:unit` | なし。ブラウザも起動しない |
 
 実行コマンドと確認内容は各行のリンク先に記載しています。E2E のコマンド例は `CI=1` でサーバーを起動します。
 
