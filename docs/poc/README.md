@@ -14,6 +14,7 @@
 | [004: フロントエンド配信・WAF](./004-frontend-hosting-waf.md) | Hosting、デプロイ、WAF | Amplify Hosting へのデプロイと、WAF の関連付け・ログ出力を実装 |
 | [005: MFA の足場と TOTP 必須](./005-mfa-foundation.md) | MFA 方針、TOTP、検証手順 | TOTP 登録・再ログイン・誤入力・API 連携を実環境で検証。Google Authenticator による TOTP サインインを確認 |
 | [006: 任意 TOTP MFA](./006-optional-mfa.md) | ログイン後の登録、有効化・無効化 | Hosted UI を維持し、本人が認証アプリと MFA 設定を管理する画面・検証手順 |
+| [007: TOTP の再登録・紛失時の復旧](./007-mfa-recovery.md) | 中断、端末変更、管理者復旧、発行済みトークン | OPTIONAL 環境で登録置き換え・管理者による復旧と既存トークンの挙動を比較 |
 
 ## 新しい POC の記録
 
