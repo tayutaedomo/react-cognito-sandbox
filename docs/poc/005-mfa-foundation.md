@@ -76,6 +76,30 @@ terraform apply mfa-required.tfplan
 `totp_enabled = false` だけでは、ユーザーの登録済み TOTP を削除できない。
 既存の検証環境が `OPTIONAL` 等の場合は元の値を記録し、その値に戻す。
 
+### 無効化・再有効化を繰り返す場合の制約
+
+User Pool の MFA 方針は更新 API で `OFF` / `OPTIONAL` / `ON` に変更できる。
+MFA 方針の切り替え自体に User Pool の再作成は不要。
+以下は AWS の仕様確認による整理で、現在の実環境での往復切り替えは未検証。
+
+| 操作 | 制約・注意点 |
+| --- | --- |
+| `ON → OFF → ON` | OFF は登録済み TOTP シークレットの削除ではない。再有効化は既存の登録状態を引き継ぐ前提で、初回 QR 登録のやり直しにはならない |
+| プールの TOTP 因子を無効化 | 新しい TOTP の関連付け・検証ができなくなる。既に登録したユーザーは因子の無効化だけでは TOTP を利用できなくなるとは限らない。MFA 全体を止める操作は `mfa_configuration = "OFF"` と区別する |
+| `ON / OPTIONAL` と `totp_enabled = false` | 今回は因子が TOTP のみなので、Terraform の precondition が拒否する。これは POC の設定ガードであり、AWS 全体の因子構成を制限するものではない |
+| `ON → OPTIONAL` | 任意 MFA はユーザーの有効化・優先方式の設定にも依存する。必須時にログインできたことだけで、任意時にも同じ挙動になるとは判断しない |
+| `ON` のままユーザーごとに無効化 | 必須 MFA ではユーザーが MFA を無効化できない。ユーザーごとの有効・無効の検証は OPTIONAL で行う |
+| 未登録ユーザーで ON に戻す | MFA 登録が必要。登録を中断し、一時トークンを既に受け取った場合には、Hosted UI だけで再開できず MFA_SETUP の処理が必要な場合がある |
+| 連続したログイン | 使用済み TOTP を再送すると拒否される。次の30秒枠のコードを使う |
+
+切り替え後の検証には新しいブラウザコンテキストを使い、既存セッション・発行済みトークンの動作とは分けて確認する。
+初回 QR 登録を繰り返し試す場合は、未登録の専用ユーザーを別に作ると、設定切り替えと登録状態のリセットを混同せずに検証できる。
+実環境を切り替える前に現在値を記録し、検証後に元の ON / TOTP 有効へ戻す。
+
+参考: [MFA 設定更新 API](https://docs.aws.amazon.com/cognito-user-identity-pools/latest/APIReference/API_SetUserPoolMfaConfig.html)、
+[TOTP の制約](https://docs.aws.amazon.com/cognito/latest/developerguide/user-pool-settings-mfa-totp.html)、
+[ユーザーごとの MFA 設定](https://docs.aws.amazon.com/cognito/latest/developerguide/user-pool-settings-mfa.html)。
+
 ## 手動検証
 
 `frontend/.env` の実 Cognito・API 接続設定でアプリを起動する。
