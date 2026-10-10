@@ -15,6 +15,8 @@
 Vite と React (TypeScript) で構築されたフロントエンドアプリケーションです。
 AWS Amplify Auth (Gen 2) を利用して Cognito と連携し、ログイン・サインアウトおよび JWT トークンの取得を行います。
 
+MFA 設定画面・共通処理・モックの分岐は [MFA のフロントエンド実装](../docs/mfa-frontend-implementation.md) に図解しています。
+
 ローカル開発をスムーズに行うため、環境変数によって「モックモード」と「実 Cognito 環境モード」を切り替えられるように設計されています。
 
 ## 環境構築と起動
