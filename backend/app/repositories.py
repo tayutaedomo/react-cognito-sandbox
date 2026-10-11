@@ -15,6 +15,7 @@ from aws_lambda_powertools import Logger
 # importして使う場合は contextvars を使っているため動作する。
 logger = Logger(service="backend-api")
 
+
 class UserRepository(ABC):
     @abstractmethod
     def list_users(self) -> list[dict[str, Any]]:
@@ -60,7 +61,9 @@ class CognitoUserRepository(UserRepository):
                     "status": user.get("UserStatus"),
                 }
             )
-        logger.info("Successfully fetched users from Cognito", extra={"user_count": len(users)})
+        logger.info(
+            "Successfully fetched users from Cognito", extra={"user_count": len(users)}
+        )
         return users
 
 

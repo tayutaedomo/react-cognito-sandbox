@@ -280,6 +280,8 @@ npm --prefix e2e run test:unit
 
 いずれも Git 管理外です。モックのシナリオ一覧は `npm --prefix e2e run test:e2e -- --list` で確認できます。
 
+GitHub Actions では、モック E2E のキャプチャ・HTML レポートと失敗時のトレースを artifact として14日間保存します。取得方法は [CI の artifact](../docs/ci.md#モック-e2e-の-artifact) を参照してください。
+
 ### モック画面と実環境の記録範囲
 
 モック E2E はホーム画面・Users API と、MFA の無効状態・登録画面・誤コード・有効状態を撮影します。
