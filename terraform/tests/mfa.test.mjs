@@ -141,3 +141,14 @@ test('email MFA rejects missing SES identity', () => {
   assert.notEqual(result.status, 0);
   assert.match(result.stderr + result.stdout, /Email MFA requires/);
 });
+
+test('SES and admin-only recovery can be applied before email MFA', () => {
+  const result = plan({ ...emailVars, email_mfa_enabled: false });
+  assert.equal(result.status, 0, result.stderr + result.stdout);
+  const shown = terraform(['show', '-json', 'plan.tfplan']);
+  const values = JSON.parse(shown.stdout).planned_values.root_module.resources[0].values;
+  assert.equal(values.email_configuration[0].email_sending_account, 'DEVELOPER');
+  assert.equal(values.account_recovery_setting[0].recovery_mechanism[0].name, 'admin_only');
+  assert.equal(values.email_mfa_configuration.length, 0);
+  assert.equal(values.software_token_mfa_configuration[0].enabled, true);
+});

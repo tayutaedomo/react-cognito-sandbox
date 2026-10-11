@@ -24,6 +24,8 @@ TOTP・Managed Login・SRP・信頼するデバイスを維持し、メール MF
 
 ## SES の準備
 
+準備スクリプトの Cognito 読み取りにはメール MFA・UserPoolTier に対応した AWS CLI が必要です。古い AWS CLI は新しい応答項目を省略する場合があります。
+
 Git 管理外のルート `.env` に `MFA_EMAIL_FROM` と `MFA_EMAIL_TO` を設定します。別の Gmail アドレスを使い、Gmail エイリアスはそれぞれ確認します。実アドレス・パスワードを `VITE_` 変数に入れません。準備スクリプトは AWS の入力を権限を限定した一時ファイルで渡し、終了時に削除して、アドレスをログやコマンド引数に表示しません。
 
 ```bash
@@ -49,11 +51,16 @@ node scripts/email-mfa.mjs tfvars
 
 ## Cognito の適用と専用ユーザー
 
+初回は SES 送信と管理者復旧を先に適用し、次にメール MFA を有効化します。AWS プロバイダーが MFA 設定 API をプール更新より先に呼ぶため、同時変更は復旧設定の前提条件で拒否されます。
+
 既存の `terraform.tfvars` と `examples/mfa-email.tfvars.example` を重ねて plan を確認します。自動生成した SES ARN の設定も読み込まれます。通常の plan 出力は公開せず、実アドレスを含む JSON plan は成果物に保存しません。
 
 ```bash
+terraform -chdir=terraform/app plan -var-file=examples/mfa-email.tfvars.example -var=email_mfa_enabled=false
+# SES 送信と管理者復旧の差分を確認してから実施
+terraform -chdir=terraform/app apply -var-file=examples/mfa-email.tfvars.example -var=email_mfa_enabled=false
+# 続いてメール MFA を有効化
 terraform -chdir=terraform/app plan -var-file=examples/mfa-email.tfvars.example
-# 差分を確認してから実施
 terraform -chdir=terraform/app apply -var-file=examples/mfa-email.tfvars.example
 ```
 
@@ -91,4 +98,4 @@ MFA 設定画面は認証アプリ・メール・ログイン時の方式を分�
 
 モック E2E でメール有効化、3つの優先設定、SRP 方式選択と誤コード再試行を確認し、モックのみ画面キャプチャを保存します。実環境のメール配送と Cognito 認証はこの自動検証に含みません。
 
-ローカル検証：frontend 単体テスト41件、E2E 補助テスト21件、Terraform plan 14件、モック E2E 5件が成功。Oxfmt・oxlint・ビルド・Terraform validate も成功。SES の両 Identity の所有確認と配送確認1通の受信を確認しました。Gmail では迷惑メールに分類されました。実 Cognito のメール MFA 認証は未検証です。
+ローカル検証：frontend 単体テスト41件、E2E 補助テスト21件、Terraform plan 15件、モック E2E 5件が成功。Oxfmt・oxlint・ビルド・Terraform validate も成功。SES の両 Identity の所有確認と配送確認1通の受信を確認しました。Gmail では迷惑メールに分類されました。実プールで OPTIONAL・TOTP とメール・Essentials・SES 送信・管理者復旧・デバイスの User Opt-In を SDK で確認しました。実 Cognito のメールコードによるサインインは未検証です。

@@ -11,6 +11,8 @@ CLIENT_ID=$(terraform output -raw cognito_user_pool_client_id)
 API_ENDPOINT=$(terraform output -raw api_endpoint)
 COGNITO_DOMAIN_URL=$(terraform output -raw cognito_domain_url)
 COGNITO_DOMAIN=${COGNITO_DOMAIN_URL#https://}
+# 適用済み Terraform state からメール MFA の利用可否をビルドへ反映する。
+EMAIL_MFA_ENABLED=$(terraform show -json | python3 -c 'import json, sys; resources = json.load(sys.stdin)["values"]["root_module"]["resources"]; print("true" if any(r["type"] == "aws_cognito_user_pool" and r["values"].get("email_mfa_configuration") for r in resources) else "false")')
 cd ../../frontend
 
 echo "Updating .env from Terraform outputs..."
@@ -21,6 +23,7 @@ VITE_COGNITO_CLIENT_ID=$CLIENT_ID
 VITE_COGNITO_DOMAIN=$COGNITO_DOMAIN
 VITE_API_ENDPOINT=$API_ENDPOINT
 VITE_USE_MOCK_COGNITO=${VITE_USE_MOCK_COGNITO:-false}
+VITE_EMAIL_MFA_ENABLED=${VITE_EMAIL_MFA_ENABLED:-$EMAIL_MFA_ENABLED}
 ENV_EOF
 
 echo "Deploying to Amplify App: $APP_ID (Branch: $BRANCH_NAME)"

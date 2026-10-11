@@ -80,6 +80,7 @@ try {
       )
         throw new Error('Set MFA_EMAIL_USER_POOL_ID and a password meeting the pool policy.');
       const current = awsRequest('cognito-idp', 'describe-user-pool', { UserPoolId: pool }).UserPool;
+      if (!current.UserPoolTier) throw new Error('AWS CLI is too old to read UserPoolTier. Use a current AWS CLI.');
       if (
         current.MfaConfiguration !== 'OPTIONAL' ||
         current.EmailConfiguration?.EmailSendingAccount !== 'DEVELOPER' ||

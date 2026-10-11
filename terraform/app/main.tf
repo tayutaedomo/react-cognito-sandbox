@@ -52,8 +52,9 @@ resource "aws_cognito_user_pool" "main" {
     }
   }
 
+  # SES と復旧を先に適用し、その後メール MFA を有効化できるように分離する。
   dynamic "email_configuration" {
-    for_each = var.email_mfa_enabled ? [true] : []
+    for_each = var.ses_email_identity_arn != null ? [true] : []
     content {
       email_sending_account = "DEVELOPER"
       source_arn            = var.ses_email_identity_arn
