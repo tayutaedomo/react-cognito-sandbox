@@ -9,8 +9,8 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "format": "cd .. && frontend/node_modules/.bin/oxfmt -c .oxfmtrc.json \"frontend/**/*.{js,jsx,ts,tsx,mjs,cjs,mts,cts}\" \"e2e/**/*.{js,jsx,ts,tsx,mjs,cjs,mts,cts}\" \"terraform/tests/**/*.{js,jsx,ts,tsx,mjs,cjs,mts,cts}\"",
-    "format:check": "cd .. && frontend/node_modules/.bin/oxfmt -c .oxfmtrc.json --check \"frontend/**/*.{js,jsx,ts,tsx,mjs,cjs,mts,cts}\" \"e2e/**/*.{js,jsx,ts,tsx,mjs,cjs,mts,cts}\" \"terraform/tests/**/*.{js,jsx,ts,tsx,mjs,cjs,mts,cts}\""
+    "format": "cd .. && frontend/node_modules/.bin/oxfmt -c .oxfmtrc.json \"frontend/**/*.{js,jsx,ts,tsx,mjs,cjs,mts,cts}\" \"e2e/**/*.{js,jsx,ts,tsx,mjs,cjs,mts,cts}\" \"terraform/tests/**/*.{js,jsx,ts,tsx,mjs,cjs,mts,cts}\" \"scripts/**/*.{js,ts,mjs}\"",
+    "format:check": "cd .. && frontend/node_modules/.bin/oxfmt -c .oxfmtrc.json --check \"frontend/**/*.{js,jsx,ts,tsx,mjs,cjs,mts,cts}\" \"e2e/**/*.{js,jsx,ts,tsx,mjs,cjs,mts,cts}\" \"terraform/tests/**/*.{js,jsx,ts,tsx,mjs,cjs,mts,cts}\" \"scripts/**/*.{js,ts,mjs}\""
   },
   "dependencies": {
     "aws-amplify": "^6.20.0",

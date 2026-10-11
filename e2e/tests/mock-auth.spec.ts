@@ -42,6 +42,55 @@ test.describe('Mock Auth and API E2E', () => {
     await expect(page.getByTestId('mfa-status')).toHaveText('TOTP：有効（優先方式）');
   });
 
+  test('email MFA preferences and SRP method selection', async ({ page }) => {
+    await page.goto('/');
+    await page.getByRole('button', { name: 'ログイン / 登録 / パスワード再設定 (Managed Login)' }).click();
+    await page.getByRole('button', { name: 'MFA 設定', exact: true }).click();
+    await page.getByRole('button', { name: 'メール MFA を有効にする', exact: true }).click();
+    await expect(page.getByTestId('email-mfa-status')).toHaveText('メール：有効（優先方式）');
+    await page.getByRole('button', { name: '認証アプリを登録する', exact: true }).click();
+    await page.getByLabel('認証アプリの6桁コード').fill('123456');
+    await page.getByRole('button', { name: 'コードを確認して有効にする' }).click();
+    await page.getByLabel('優先方式').selectOption('TOTP');
+    await expect(page.getByTestId('mfa-status')).toHaveText('TOTP：有効（優先方式）');
+    await page.getByLabel('優先方式').selectOption('EMAIL');
+    await expect(page.getByTestId('email-mfa-status')).toHaveText('メール：有効（優先方式）');
+    await page.getByLabel('優先方式').selectOption('choose');
+    await expect(page.getByTestId('email-mfa-status')).toHaveText('メール：有効');
+    await expect(page.getByTestId('mfa-status')).toHaveText('TOTP：有効');
+    await page.screenshot({ path: 'test-results/screenshots/10-email-mfa-settings-mock.png', fullPage: true });
+    await page.getByRole('button', { name: 'ホームに戻る' }).click();
+    await page.getByRole('button', { name: 'Sign Out', exact: true }).click();
+    await page.getByRole('button', { name: 'メールアドレスでログイン（SRP）' }).click();
+    await page.getByLabel('メールアドレス', { exact: true }).fill('mock@example.com');
+    await page.getByLabel('パスワード', { exact: true }).fill('mock-password');
+    await page.getByRole('button', { name: 'SRP でログイン' }).click();
+    await page.screenshot({ path: 'test-results/screenshots/11-mfa-selection-mock.png', fullPage: true });
+    await page.getByRole('button', { name: 'メールで確認', exact: true }).click();
+    await expect(page.getByText('m***@e***', { exact: false })).toBeVisible();
+    await page.getByLabel('メールの6桁コード').fill('000000');
+    await page.getByRole('button', { name: '確認', exact: true }).click();
+    await expect(page.getByRole('alert')).toBeVisible();
+    await page.screenshot({ path: 'test-results/screenshots/12-email-code-retry-mock.png', fullPage: true });
+    await page.getByLabel('メールの6桁コード').fill('123456');
+    await page.getByRole('button', { name: '確認', exact: true }).click();
+    await expect(page.getByTestId('device-remembered-status')).toBeVisible();
+    await page.getByRole('button', { name: 'このブラウザを信頼する' }).click();
+    await page.getByRole('button', { name: 'ホームに戻る' }).click();
+    await page.getByRole('button', { name: 'MFA 設定', exact: true }).click();
+    await page.getByRole('button', { name: 'メール MFA を無効にする', exact: true }).click();
+    await expect(page.getByTestId('mfa-status')).toHaveText('TOTP：有効（優先方式）');
+    await expect(page.getByTestId('registered-devices-list')).toContainText('信頼済み');
+    await page.getByRole('button', { name: 'ホームに戻る' }).click();
+    await page.getByRole('button', { name: 'Sign Out', exact: true }).click();
+    await page.getByRole('button', { name: 'メールアドレスでログイン（SRP）' }).click();
+    await page.getByLabel('メールアドレス', { exact: true }).fill('mock@example.com');
+    await page.getByLabel('パスワード', { exact: true }).fill('mock-password');
+    await page.getByRole('button', { name: 'SRP でログイン' }).click();
+    await expect(page.getByTestId('device-remembered-status')).toHaveText('この端末：信頼済み');
+    await expect(page.getByLabel('認証アプリの6桁コード')).toHaveCount(0);
+  });
+
   test('cancelling registration removes the QR code and setup key', async ({ page }) => {
     await page.goto('/');
     await page.getByRole('button', { name: 'ログイン / 登録 / パスワード再設定 (Managed Login)' }).click();
@@ -60,8 +109,7 @@ test.describe('Mock Auth and API E2E', () => {
     await page.getByLabel('メールアドレス').fill('mock@example.com');
     await page.getByLabel('パスワード').fill('mock-password');
     await page.getByRole('button', { name: 'SRP でログイン' }).click();
-    await page.getByLabel('認証アプリの6桁コード').fill('123456');
-    await page.getByRole('button', { name: '確認', exact: true }).click();
+    // MFA を有効化していない OPTIONAL ユーザーは、コードなしでログインする。
     await expect(page.getByTestId('device-remembered-status')).toHaveText('この端末：一覧にありません');
     await page.getByRole('button', { name: 'このブラウザを信頼する' }).click();
     await expect(page.getByTestId('device-remembered-status')).toHaveText('この端末：信頼済み');

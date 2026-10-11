@@ -68,3 +68,6 @@ pnpm-debug.log*
 
 # Project specific
 tmp/
+
+# メール MFA の配送確認記録（ローカルのみ）
+.email-mfa-delivery.json

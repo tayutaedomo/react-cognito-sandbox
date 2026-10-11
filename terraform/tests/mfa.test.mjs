@@ -105,3 +105,50 @@ for (const mode of ['REQUIRED', 'on', '']) {
     assert.match(result.stderr + result.stdout, /mfa_configuration must be OFF, OPTIONAL, or ON/);
   });
 }
+
+const emailVars = {
+  mfa_configuration: 'OPTIONAL',
+  totp_enabled: true,
+  email_mfa_enabled: true,
+  user_pool_tier: 'ESSENTIALS',
+  account_recovery_mode: 'admin_only',
+  ses_email_identity_arn: 'arn:aws:ses:ap-northeast-1:123456789012:identity/test@example.com',
+};
+test('email MFA requires SES and admin-only recovery while keeping TOTP', () => {
+  const result = plan(emailVars);
+  assert.equal(result.status, 0, result.stderr + result.stdout);
+  const shown = terraform(['show', '-json', 'plan.tfplan']);
+  const values = JSON.parse(shown.stdout).planned_values.root_module.resources[0].values;
+  assert.equal(values.email_configuration[0].email_sending_account, 'DEVELOPER');
+  assert.match(values.email_mfa_configuration[0].message, /\{####\}/);
+  assert.equal(values.software_token_mfa_configuration[0].enabled, true);
+  assert.equal(values.account_recovery_setting[0].recovery_mechanism[0].name, 'admin_only');
+});
+for (const [key, value] of [
+  ['account_recovery_mode', 'verified_email'],
+  ['user_pool_tier', 'LITE'],
+  ['mfa_configuration', 'OFF'],
+]) {
+  test(`email MFA rejects incompatible ${key}`, () => {
+    const result = plan({ ...emailVars, [key]: value });
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr + result.stdout, /Email MFA requires/);
+  });
+}
+test('email MFA rejects missing SES identity', () => {
+  const { ses_email_identity_arn: _arn, ...vars } = emailVars;
+  const result = plan(vars);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr + result.stdout, /Email MFA requires/);
+});
+
+test('SES and admin-only recovery can be applied before email MFA', () => {
+  const result = plan({ ...emailVars, email_mfa_enabled: false });
+  assert.equal(result.status, 0, result.stderr + result.stdout);
+  const shown = terraform(['show', '-json', 'plan.tfplan']);
+  const values = JSON.parse(shown.stdout).planned_values.root_module.resources[0].values;
+  assert.equal(values.email_configuration[0].email_sending_account, 'DEVELOPER');
+  assert.equal(values.account_recovery_setting[0].recovery_mechanism[0].name, 'admin_only');
+  assert.equal(values.email_mfa_configuration.length, 0);
+  assert.equal(values.software_token_mfa_configuration[0].enabled, true);
+});

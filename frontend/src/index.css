@@ -22,7 +22,7 @@
 
 body { margin: 0; min-width: 320px; }
 
-button, input { font: inherit; }
+button, input, select { font: inherit; }
 
 button {
   display: inline-flex;
@@ -42,7 +42,7 @@ button {
 
 button:hover:not(:disabled) { background: #f0f4fa; border-color: #bdc9dc; }
 button:disabled { opacity: .55; cursor: not-allowed; }
-button:focus-visible, input:focus-visible, summary:focus-visible {
+button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible {
   outline: 3px solid #83adff;
   outline-offset: 2px;
 }
@@ -54,7 +54,7 @@ button:focus-visible, input:focus-visible, summary:focus-visible {
 .button-link { border-color: transparent; background: transparent; padding-inline: 4px; color: var(--blue); }
 .button-link:hover:not(:disabled) { background: var(--blue-soft); border-color: transparent; }
 
-input[type='text'], input[type='email'], input[type='password'], input[inputmode='numeric'] {
+input[type='text'], input[type='email'], input[type='password'], input[inputmode='numeric'], select {
   width: 100%;
   min-height: 44px;
   padding: 10px 12px;

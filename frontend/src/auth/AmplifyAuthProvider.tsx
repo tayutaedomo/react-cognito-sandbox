@@ -8,6 +8,8 @@ import {
   fetchAuthSession,
   fetchUserAttributes,
   updateUserAttributes,
+  sendUserAttributeVerificationCode,
+  confirmUserAttribute,
   signIn as amplifySignIn,
   confirmSignIn,
   fetchMFAPreference,
@@ -22,12 +24,18 @@ import { createDeviceService } from './deviceService';
 import { fetchOwnDevices } from './diagnostics';
 import type { User } from './AuthContext';
 
-const mfa = createMfaService({
-  fetchMFAPreference,
-  setUpTOTP,
-  verifyTOTPSetup,
-  updateMFAPreference,
-});
+const mfa = createMfaService(
+  {
+    fetchUserAttributes,
+    sendUserAttributeVerificationCode,
+    confirmUserAttribute,
+    fetchMFAPreference,
+    setUpTOTP,
+    verifyTOTPSetup,
+    updateMFAPreference,
+  },
+  { emailAvailable: import.meta.env.VITE_EMAIL_MFA_ENABLED === 'true' },
+);
 const deviceAuth = createDeviceService({
   signIn: amplifySignIn,
   confirmSignIn,

@@ -1,0 +1,8 @@
+# Git 管理外の既存 tfvars に重ねる。SES の所有確認・配送確認後に適用。
+# ses_email_identity_arn は root .env から準備スクリプトが別ファイルに生成する。
+mfa_configuration       = "OPTIONAL"
+totp_enabled            = true
+device_tracking_enabled = true
+email_mfa_enabled       = true
+user_pool_tier          = "ESSENTIALS"
+account_recovery_mode   = "admin_only"

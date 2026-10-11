@@ -1,5 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createDeviceService, deviceErrorMessage, deviceTrustStatus } from '../src/auth/deviceService';
+import {
+  createDeviceService,
+  deviceErrorMessage,
+  deviceTrustStatus,
+  isExpiredSignInSession,
+} from '../src/auth/deviceService';
 
 function fixture() {
   const api = {
@@ -106,4 +111,45 @@ describe('trusted device service', () => {
     expect(deviceErrorMessage({ name: 'NotAuthorizedException', message: 'password=secret' })).not.toContain('secret');
     expect(deviceErrorMessage({ name: 'UnsupportedDeviceSignInStep' })).toContain('TOTP');
   });
+});
+
+describe('email MFA challenges', () => {
+  it('uses only server-provided methods and destination', async () => {
+    const { api, service } = fixture();
+    api.signIn.mockResolvedValue({
+      isSignedIn: false,
+      nextStep: { signInStep: 'CONTINUE_SIGN_IN_WITH_MFA_SELECTION', allowedMFATypes: ['SMS', 'TOTP', 'EMAIL'] },
+    });
+    expect(await service.signIn('user@example.com', 'password')).toEqual({
+      kind: 'selection',
+      methods: ['TOTP', 'EMAIL'],
+    });
+    api.confirmSignIn.mockResolvedValueOnce({
+      isSignedIn: false,
+      nextStep: { signInStep: 'CONFIRM_SIGN_IN_WITH_EMAIL_CODE', codeDeliveryDetails: { destination: 'u***@e***' } },
+    });
+    expect(await service.selectMfa('EMAIL')).toEqual({ kind: 'email', destination: 'u***@e***' });
+    expect(await service.confirmCode('012345')).toBe('signedIn');
+  });
+  it('rejects selection before Cognito provides options', async () => {
+    const { api, service } = fixture();
+    await expect(service.selectMfa('EMAIL')).rejects.toMatchObject({ name: 'InvalidMfaSelection' });
+    expect(api.confirmSignIn).not.toHaveBeenCalled();
+  });
+  it('allows a rejected code to be retried in the same challenge', async () => {
+    const { api, service } = fixture();
+    api.confirmSignIn.mockRejectedValueOnce({ name: 'CodeMismatchException' });
+    await expect(service.confirmCode('000000')).rejects.toMatchObject({ name: 'CodeMismatchException' });
+    expect(await service.confirmCode('123456')).toBe('signedIn');
+  });
+});
+
+it('restarts expired sessions without treating every wrong code as expiration', () => {
+  expect(isExpiredSignInSession({ name: 'ExpiredCodeException' })).toBe(true);
+  expect(isExpiredSignInSession({ name: 'NotAuthorizedException', message: 'Invalid session for the user' })).toBe(
+    true,
+  );
+  expect(isExpiredSignInSession({ name: 'CodeMismatchException' })).toBe(false);
+  expect(isExpiredSignInSession({ name: 'NotAuthorizedException', message: 'Incorrect password' })).toBe(false);
+  expect(isExpiredSignInSession(null)).toBe(false);
 });

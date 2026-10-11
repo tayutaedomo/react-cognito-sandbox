@@ -9,6 +9,9 @@ function fixture() {
       getSetupUri: () => new URL('otpauth://totp/Sandbox?secret=MOCKSECRET'),
     }),
     verifyTOTPSetup: vi.fn().mockResolvedValue(undefined),
+    fetchUserAttributes: vi.fn().mockResolvedValue({ email: 'test@example.com', email_verified: 'true' }),
+    sendUserAttributeVerificationCode: vi.fn().mockResolvedValue(undefined),
+    confirmUserAttribute: vi.fn().mockResolvedValue(undefined),
     updateMFAPreference: vi.fn().mockResolvedValue(undefined),
   };
   return { api, service: createMfaService(api) };
@@ -17,7 +20,7 @@ function fixture() {
 describe('MFA settings service', () => {
   it('does not infer stored registration from absent enabled preferences', async () => {
     const { service } = fixture();
-    expect(await service.getPreference()).toEqual({
+    expect(await service.getPreference()).toMatchObject({
       enabled: false,
       preferred: false,
       raw: { enabled: [] },
@@ -27,7 +30,7 @@ describe('MFA settings service', () => {
   it('reads enabled TOTP independently of other factors', async () => {
     const { api, service } = fixture();
     api.fetchMFAPreference.mockResolvedValue({ enabled: ['SMS', 'TOTP'], preferred: 'TOTP' });
-    expect(await service.getPreference()).toEqual({
+    expect(await service.getPreference()).toMatchObject({
       enabled: true,
       preferred: true,
       raw: { enabled: ['SMS', 'TOTP'], preferred: 'TOTP' },
@@ -37,7 +40,7 @@ describe('MFA settings service', () => {
   it('does not treat another factor as TOTP enabled', async () => {
     const { api, service } = fixture();
     api.fetchMFAPreference.mockResolvedValue({ enabled: ['SMS'], preferred: 'SMS' });
-    expect(await service.getPreference()).toEqual({
+    expect(await service.getPreference()).toMatchObject({
       enabled: false,
       preferred: false,
       raw: { enabled: ['SMS'], preferred: 'SMS' },
@@ -122,4 +125,55 @@ describe('MFA settings service', () => {
     expect(mfaErrorMessage({ name: 'EnableSoftwareTokenMFAException' })).toContain('登録');
     expect(mfaErrorMessage({ name: 'NotAuthorizedException' })).toContain('ログイン');
   });
+});
+
+describe('email and preferred MFA', () => {
+  it('preserves TOTP preference when adding email', async () => {
+    const { api, service } = fixture();
+    api.fetchMFAPreference.mockResolvedValue({ enabled: ['TOTP'], preferred: 'TOTP' });
+    await service.setEmailEnabled(true);
+    expect(api.updateMFAPreference).toHaveBeenCalledWith({ email: 'ENABLED' });
+  });
+  it('makes the remaining method preferred when disabling TOTP', async () => {
+    const { api, service } = fixture();
+    api.fetchMFAPreference.mockResolvedValue({ enabled: ['TOTP', 'EMAIL'], preferred: 'TOTP' });
+    await service.setEnabled(false);
+    expect(api.updateMFAPreference).toHaveBeenCalledWith({ totp: 'DISABLED', email: 'PREFERRED' });
+  });
+  it.each(['TOTP', 'EMAIL', null] as const)('saves preference %s independently of enabled methods', async (method) => {
+    const { api, service } = fixture();
+    api.fetchMFAPreference.mockResolvedValue({ enabled: ['TOTP', 'EMAIL'] });
+    await service.setPreferred(method);
+    expect(api.updateMFAPreference).toHaveBeenCalledWith({
+      totp: method === 'TOTP' ? 'PREFERRED' : 'NOT_PREFERRED',
+      email: method === 'EMAIL' ? 'PREFERRED' : 'NOT_PREFERRED',
+    });
+  });
+  it('rejects email activation before email ownership is verified', async () => {
+    const { api, service } = fixture();
+    api.fetchUserAttributes.mockResolvedValue({ email: 'test@example.com', email_verified: 'false' });
+    await expect(service.setEmailEnabled(true)).rejects.toMatchObject({ name: 'UnverifiedMfaEmail' });
+    expect(api.updateMFAPreference).not.toHaveBeenCalled();
+  });
+  it('rejects selection without two enabled methods', async () => {
+    const { api, service } = fixture();
+    api.fetchMFAPreference.mockResolvedValue({ enabled: ['TOTP'] });
+    await expect(service.setPreferred(null)).rejects.toMatchObject({ name: 'InvalidMfaPreference' });
+    await expect(service.setPreferred('EMAIL')).rejects.toMatchObject({ name: 'InvalidMfaPreference' });
+    expect(api.updateMFAPreference).not.toHaveBeenCalled();
+  });
+  it('verifies email separately from MFA activation', async () => {
+    const { api, service } = fixture();
+    await service.sendEmailVerification();
+    await service.verifyEmail(' 012345 ');
+    expect(api.confirmUserAttribute).toHaveBeenCalledWith({ userAttributeKey: 'email', confirmationCode: '012345' });
+    expect(api.updateMFAPreference).not.toHaveBeenCalled();
+  });
+});
+
+it('does not permit email activation before the environment is ready', async () => {
+  const { api } = fixture();
+  const service = createMfaService(api, { emailAvailable: false });
+  await expect(service.setEmailEnabled(true)).rejects.toMatchObject({ name: 'EmailMfaUnavailable' });
+  expect(api.updateMFAPreference).not.toHaveBeenCalled();
 });
