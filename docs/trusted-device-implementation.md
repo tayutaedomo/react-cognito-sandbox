@@ -7,6 +7,7 @@
 - [保存先と保持する情報](#保存先と保持する情報)
 - [アプリから保存処理まで](#アプリから保存処理まで)
 - [操作ごとの状態変化](#操作ごとの状態変化)
+- [ログイン後のデバイス一覧](#ログイン後のデバイス一覧)
 - [表示の判定と確認方法](#表示の判定と確認方法)
 - [関連コードと仕様](#関連コードと仕様)
 
@@ -77,9 +78,34 @@ flowchart LR
 
 信頼解除は、すでに発行されたトークンの失効操作ではない。トークンの期限とデバイスの信頼状態は別々に扱う。
 
+## ログイン後のデバイス一覧
+
+ログイン後の「MFA 設定」には、同じユーザーが Cognito に登録したデバイスの一覧を表示する。Hosted UI と実験用 SRP のどちらでログインしても、本人の Access トークンを使う `fetchDevices()` で取得する。新しいバックエンド API や管理者権限は使わない。
+
+```mermaid
+flowchart LR
+    Hosted["Hosted UI ログイン"] --> Session["認証済みセッション"]
+    SRP["実験用 SRP ログイン"] --> Session
+    Session --> Settings["MFA 設定画面"]
+    Settings --> Amplify["Amplify Auth<br/>fetchDevices"]
+    Amplify --> Cognito["Cognito<br/>ListDevices"]
+    Cognito --> List["デバイス名・最終認証日時<br/>取得できる場合だけ信頼状態"]
+    List --> Settings
+    SRP -.-> Current["device_key があれば<br/>このブラウザを識別"]
+    Current -.-> Settings
+```
+
+デバイスキーは画面に表示しない。Access トークンに `device_key` がある場合だけ、一覧内の「このブラウザ」を示す。Hosted UI などでキーがない場合も一覧は表示できるが、現在のブラウザを特定したり、そこで信頼登録・解除をしたりはしない。信頼操作と次回ログイン時の MFA 省略は実験用 SRP 経路で確認する。
+
+現在の Amplify Auth の `fetchDevices()` は Cognito の `ListDevices` から最大60件を取得する。一覧が60件を超える運用ではページ送りを別途実装する必要がある。一覧にないことだけで、Cognito にデバイス情報が存在しないとは判断しない。
+
 ## 表示の判定と確認方法
 
-POC 画面の「この端末：信頼済み」は、`deviceService.snapshot()` がアクセストークンの `device_key` と `fetchDevices()` の一覧の ID を照合して表示している。**Cognito の `device_status` 属性を直接判定した表示ではない**ため、信頼状態そのものの厳密な確認には、再ログイン時に TOTP が要求されるかを見る。デバイス一覧の取得とトークン期限の表示も、この `snapshot()` が行う。
+**デバイスが一覧にあるだけでは「信頼済み」と判定しない**。`dev:device_remembered_status` の `remembered` / `not_remembered` が返る場合だけ、その値で表示する。ユーザー本人の Access トークンによる実環境検証では、`ListDevices` と `GetDevice` はこの属性を返さなかった。その場合は「信頼状態を取得できません」と表示する。`device_status = valid` を信頼済みの意味として扱わない。
+
+「この端末」は Access トークンの `device_key` と一覧の ID を照合する。キーがない場合は判定できないと表示し、キーがあっても一覧にない場合は「一覧にありません」と表示する。信頼状態が取得できない場合も、SRP 画面では信頼登録・解除を操作できる。登録の成功と、実際に次回の SRP ログインで TOTP が省略されることは別々に確認する。
+
+[管理者 API のレスポンス例](https://docs.aws.amazon.com/cognito-user-identity-pools/latest/APIReference/API_AdminListDevices.html)には信頼状態属性が含まれるが、この POC は表示のためにバックエンドの管理者権限を追加しない。本人の API で取得できる情報の範囲と、取得できない状態を区別する。
 
 ブラウザ側を確認する場合は、開発者ツールの **Application → Local Storage → 対象サイト**を開く。Amplify が管理するデバイス情報は認証に使う値なので、値をログ・スクリーンショット・公開ドキュメントに残さない。
 
@@ -91,9 +117,11 @@ POC 画面の「この端末：信頼済み」は、`deviceService.snapshot()` �
 | [AmplifyAuthProvider.tsx](../frontend/src/auth/AmplifyAuthProvider.tsx) | Amplify Auth の関数を `deviceService` に渡す |
 | [MockAuthProvider.tsx](../frontend/src/auth/MockAuthProvider.tsx) | メモリ上の状態を使う画面用モックを渡す |
 | [DevicePoc.tsx](../frontend/src/components/DevicePoc.tsx) | SRP ログイン、信頼・解除の画面操作 |
+| [RegisteredDevices.tsx](../frontend/src/components/RegisteredDevices.tsx) | ログイン後の MFA 設定にデバイス一覧を表示 |
 | [deviceService.ts](../frontend/src/auth/deviceService.ts) | ログイン結果の解釈、API 呼び出し、状態表示の判定 |
 
 Amplify 内部では、Cognito の `NewDeviceMetadata` を受けてデバイスを確認登録し、トークン保存処理と同じストレージ経由でデバイス情報を保持する。利用中の Amplify Auth の実装を追う場合は、インストール済みパッケージの `getNewDeviceMetadata.ts`、`TokenStore.ts`、`CognitoUserPoolsTokenProvider.ts`、`DefaultStorage.ts` を参照する。ライブラリ更新時には内部のファイル構成や保存方法が変わる可能性がある。
 
 - [AWS: Cognito ユーザーデバイスの記憶と認証](https://docs.aws.amazon.com/cognito/latest/developerguide/amazon-cognito-user-pools-device-tracking.html)
+- [AWS: ListDevices API](https://docs.aws.amazon.com/cognito-user-identity-pools/latest/APIReference/API_ListDevices.html)
 - [Amplify Auth: Remember a device](https://docs.amplify.aws/gen1/react/build-a-backend/auth/remember-device/)

@@ -8,6 +8,14 @@ function formatDate(value?: Date) {
   return value ? value.toLocaleString() : '取得できません';
 }
 
+const currentDeviceLabels = {
+  remembered: '信頼済み',
+  not_remembered: '未信頼',
+  unknown: '信頼状態を取得できません',
+  not_listed: '一覧にありません',
+  unavailable: 'このログインでは判定できません',
+};
+
 export default function DevicePoc({ onBack }: { onBack: () => void }) {
   const { deviceAuth, refreshUser, signOut } = useAuth();
   const [email, setEmail] = useState('');
@@ -107,7 +115,7 @@ export default function DevicePoc({ onBack }: { onBack: () => void }) {
         <h3>現在の認証状態</h3>
         <div className="metric-grid">
           <p className="metric" data-testid="device-totp-status">TOTP：{snapshot.totpEnabled ? '有効' : '無効'}</p>
-          <p className={`metric${snapshot.currentDeviceRemembered ? ' metric--positive' : ''}`} data-testid="device-remembered-status">この端末：{snapshot.currentDeviceRemembered ? '信頼済み' : '未登録'}</p>
+          <p className={`metric${snapshot.currentDeviceStatus === 'remembered' ? ' metric--positive' : ''}`} data-testid="device-remembered-status">この端末：{currentDeviceLabels[snapshot.currentDeviceStatus]}</p>
           <p className="metric">デバイス信頼の期限：Cognito に自動期限なし</p>
           <p className="metric">アクセストークン期限：{formatDate(snapshot.accessTokenExpiresAt)}</p>
           <p className="metric">ID トークン期限：{formatDate(snapshot.idTokenExpiresAt)}</p>
@@ -115,9 +123,8 @@ export default function DevicePoc({ onBack }: { onBack: () => void }) {
           <p className="metric">登録済みデバイス数：{snapshot.devices.length}</p>
         </div>
         <div className="action-row">
-          {snapshot.currentDeviceRemembered
-            ? <button className="button-danger" onClick={() => { void forget(); }} disabled={busy}>この端末の信頼を解除</button>
-            : <button className="button-primary" onClick={() => { void remember(); }} disabled={busy}>このブラウザを信頼する</button>}
+          {snapshot.currentDeviceStatus !== 'remembered' && <button className="button-primary" onClick={() => { void remember(); }} disabled={busy}>このブラウザを信頼する</button>}
+          {snapshot.currentDeviceStatus !== 'not_listed' && <button className="button-danger" onClick={() => { void forget(); }} disabled={busy}>この端末の信頼を解除</button>}
           <button onClick={() => { void run(loadSnapshot); }} disabled={busy}>状態を再読み込み</button>
           <button onClick={() => { void leave(); }} disabled={busy}>サインアウト</button>
         </div>

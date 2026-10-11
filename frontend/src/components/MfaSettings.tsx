@@ -4,6 +4,7 @@ import QRCode from 'qrcode';
 import { useAuth } from '../auth/AuthContext';
 import { mfaErrorMessage } from '../auth/mfaService';
 import type { MfaPreference, TotpSetup } from '../auth/mfaService';
+import RegisteredDevices from './RegisteredDevices';
 
 export default function MfaSettings({ onBack }: { onBack: () => void }) {
   const { mfa } = useAuth();
@@ -134,6 +135,7 @@ export default function MfaSettings({ onBack }: { onBack: () => void }) {
         )}
         <p className="page-note">変更後はサインアウトし、新しいログインで確認してください。現在のログイン状態は継続します。</p>
       </section>
+      <RegisteredDevices />
     </main>
   );
 }
