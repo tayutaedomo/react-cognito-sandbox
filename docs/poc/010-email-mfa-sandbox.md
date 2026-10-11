@@ -98,4 +98,4 @@ MFA 設定画面は認証アプリ・メール・ログイン時の方式を分�
 
 モック E2E でメール有効化、3つの優先設定、SRP 方式選択と誤コード再試行を確認し、モックのみ画面キャプチャを保存します。実環境のメール配送と Cognito 認証はこの自動検証に含みません。
 
-ローカル検証：frontend 単体テスト41件、E2E 補助テスト21件、Terraform plan 15件、モック E2E 5件が成功。Oxfmt・oxlint・ビルド・Terraform validate も成功。SES の両 Identity の所有確認と配送確認1通の受信を確認しました。Gmail では迷惑メールに分類されました。実プールで OPTIONAL・TOTP とメール・Essentials・SES 送信・管理者復旧・デバイスの User Opt-In を SDK で確認しました。実 Cognito のメールコードによるサインインは未検証です。
+ローカル検証：frontend 単体テスト41件、E2E 補助テスト21件、Terraform plan 15件、モック E2E 5件が成功。Oxfmt・oxlint・ビルド・Terraform validate も成功。SES の両 Identity の所有確認と配送確認1通の受信を確認しました。Gmail では迷惑メールに分類されました。実プールで OPTIONAL・TOTP とメール・Essentials・SES 送信・管理者復旧・デバイスの User Opt-In を SDK で確認しました。ブラウザでの手動確認では、Managed Login のメール MFA 要求と、信頼済みデバイスでの SRP ログインを確認しました。実環境の全組み合わせは自動検証していません。
