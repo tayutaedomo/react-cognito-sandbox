@@ -5,8 +5,12 @@ import { generateTotp } from '../helpers/totp.mjs';
 const secret = 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ';
 // RFC 6238 Appendix B の SHA-1 結果を6桁に切り詰めたもの。
 for (const [seconds, expected] of [
-  [59, '287082'], [1111111109, '081804'], [1111111111, '050471'],
-  [1234567890, '005924'], [2000000000, '279037'], [20000000000, '353130'],
+  [59, '287082'],
+  [1111111109, '081804'],
+  [1111111111, '050471'],
+  [1234567890, '005924'],
+  [2000000000, '279037'],
+  [20000000000, '353130'],
 ]) {
   test(`RFC 6238 vector at ${seconds}`, () => {
     assert.equal(generateTotp(secret, seconds * 1000), expected);

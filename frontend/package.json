@@ -8,7 +8,9 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "format": "cd .. && frontend/node_modules/.bin/oxfmt -c .oxfmtrc.json \"frontend/**/*.{js,jsx,ts,tsx,mjs,cjs,mts,cts}\" \"e2e/**/*.{js,jsx,ts,tsx,mjs,cjs,mts,cts}\" \"terraform/tests/**/*.{js,jsx,ts,tsx,mjs,cjs,mts,cts}\"",
+    "format:check": "cd .. && frontend/node_modules/.bin/oxfmt -c .oxfmtrc.json --check \"frontend/**/*.{js,jsx,ts,tsx,mjs,cjs,mts,cts}\" \"e2e/**/*.{js,jsx,ts,tsx,mjs,cjs,mts,cts}\" \"terraform/tests/**/*.{js,jsx,ts,tsx,mjs,cjs,mts,cts}\""
   },
   "dependencies": {
     "aws-amplify": "^6.20.0",
@@ -22,6 +24,7 @@
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",
     "@vitejs/plugin-react": "^6.1.1",
+    "oxfmt": "0.72.0",
     "oxlint": "^1.81.0",
     "typescript": "~6.0.2",
     "vite": "^8.3.0",

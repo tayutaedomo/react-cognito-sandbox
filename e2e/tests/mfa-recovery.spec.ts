@@ -26,8 +26,12 @@ test.describe('TOTP recovery and existing sessions', () => {
     let secondSecret = '';
 
     function totpInput(page: Page) {
-      return page.locator('input[name="totpCode"]:visible, input[name="softwareTokenMfaCode"]:visible, input[autocomplete="one-time-code"]:visible')
-        .or(page.getByRole('textbox', { name: /code|コード/i })).first();
+      return page
+        .locator(
+          'input[name="totpCode"]:visible, input[name="softwareTokenMfaCode"]:visible, input[autocomplete="one-time-code"]:visible',
+        )
+        .or(page.getByRole('textbox', { name: /code|コード/i }))
+        .first();
     }
 
     async function passwordStep() {
@@ -52,10 +56,13 @@ test.describe('TOTP recovery and existing sessions', () => {
       await expect(totpInput(page)).toBeVisible();
       // 使用済みコードを避け、旧・新コードの偶然の一致も除外する。
       do {
-        await new Promise(resolve => setTimeout(resolve, 30_000 - Date.now() % 30_000 + 500));
+        await new Promise((resolve) => setTimeout(resolve, 30_000 - (Date.now() % 30_000) + 500));
       } while (rejectedSecret && generateTotp(secret) === generateTotp(rejectedSecret));
       await totpInput(page).fill(generateTotp(secret));
-      await page.getByRole('button', { name: /confirm|verify|sign in|submit|確認|検証|ログイン|送信/i }).first().click();
+      await page
+        .getByRole('button', { name: /confirm|verify|sign in|submit|確認|検証|ログイン|送信/i })
+        .first()
+        .click();
     }
 
     async function signIn(secret?: string) {
@@ -97,8 +104,8 @@ test.describe('TOTP recovery and existing sessions', () => {
     async function rememberIssuedTokens(page: Page) {
       const found = await page.evaluate(() => {
         const keys = Object.keys(localStorage);
-        const id = localStorage.getItem(keys.find(key => key.endsWith('.idToken')) ?? '');
-        const access = localStorage.getItem(keys.find(key => key.endsWith('.accessToken')) ?? '');
+        const id = localStorage.getItem(keys.find((key) => key.endsWith('.idToken')) ?? '');
+        const access = localStorage.getItem(keys.find((key) => key.endsWith('.accessToken')) ?? '');
         (window as unknown as { recoveryTokens: unknown }).recoveryTokens = { id, access };
         return Boolean(id && access);
       });
@@ -106,19 +113,29 @@ test.describe('TOTP recovery and existing sessions', () => {
     }
 
     async function probeIssuedTokens(page: Page) {
-      return page.evaluate(async apiEndpoint => {
+      return page.evaluate(async (apiEndpoint) => {
         const { id, access } = (window as unknown as { recoveryTokens: { id: string; access: string } }).recoveryTokens;
         // Access トークンの iss から、このトークンを発行した Cognito に問い合わせる。
         const claims = JSON.parse(atob(access.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
         const issuer = new URL(claims.iss).origin;
         try {
-          const api = await fetch(`${apiEndpoint}/api/users`, { headers: { Authorization: `Bearer ${id}` } });
+          const api = await fetch(`${apiEndpoint}/api/users`, {
+            headers: { Authorization: `Bearer ${id}` },
+          });
           const cognito = await fetch(issuer, {
-            method: 'POST', headers: { 'Content-Type': 'application/x-amz-json-1.1', 'X-Amz-Target': 'AWSCognitoIdentityProviderService.GetUser' },
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/x-amz-json-1.1',
+              'X-Amz-Target': 'AWSCognitoIdentityProviderService.GetUser',
+            },
             body: JSON.stringify({ AccessToken: access }),
           });
           const result = cognito.ok ? {} : await cognito.json();
-          return { api: api.status, cognito: cognito.status, error: result.__type?.split('#').pop() };
+          return {
+            api: api.status,
+            cognito: cognito.status,
+            error: result.__type?.split('#').pop(),
+          };
         } catch {
           throw new Error('Issued-token probe failed; check service connectivity.');
         }
@@ -135,7 +152,7 @@ test.describe('TOTP recovery and existing sessions', () => {
         const secret = await startSetup(page);
         expect(secret !== abandoned, 'Restart must issue a new setup key').toBe(true);
         while (generateTotp(secret) === generateTotp(abandoned)) {
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          await new Promise((resolve) => setTimeout(resolve, 1000));
         }
         await page.getByLabel('認証アプリの6桁コード').fill(generateTotp(abandoned));
         await page.getByRole('button', { name: 'コードを確認して有効にする' }).click();
@@ -146,7 +163,11 @@ test.describe('TOTP recovery and existing sessions', () => {
 
       const existing = await signIn(firstSecret);
       await rememberIssuedTokens(existing);
-      expect(await probeIssuedTokens(existing)).toEqual({ api: 200, cognito: 200, error: undefined });
+      expect(await probeIssuedTokens(existing)).toEqual({
+        api: 200,
+        cognito: 200,
+        error: undefined,
+      });
       await settings(existing, true);
 
       await test.step('Canceling replacement preserves the previously verified authenticator', async () => {
@@ -165,7 +186,11 @@ test.describe('TOTP recovery and existing sessions', () => {
         secondSecret = await startSetup(existing);
         await completeSetup(existing, secondSecret);
         await rejectOldAndAcceptNew(firstSecret, secondSecret);
-        expect(await probeIssuedTokens(existing)).toEqual({ api: 200, cognito: 200, error: undefined });
+        expect(await probeIssuedTokens(existing)).toEqual({
+          api: 200,
+          cognito: 200,
+          error: undefined,
+        });
       });
 
       await test.step('Administrator disables lost factor; user signs in and registers a replacement', async () => {
@@ -174,7 +199,11 @@ test.describe('TOTP recovery and existing sessions', () => {
         expect(locked.url().startsWith(baseURL)).toBe(false);
         await admin.disable();
         expect(await admin.isEnabled()).toBe(false);
-        expect(await probeIssuedTokens(existing)).toEqual({ api: 200, cognito: 200, error: undefined });
+        expect(await probeIssuedTokens(existing)).toEqual({
+          api: 200,
+          cognito: 200,
+          error: undefined,
+        });
         const recovered = await signIn();
         await settings(recovered, false);
         const replacement = await startSetup(recovered);
@@ -193,7 +222,7 @@ test.describe('TOTP recovery and existing sessions', () => {
         await admin.disable();
         await admin.globalSignOut();
       } finally {
-        await Promise.allSettled(contexts.map(context => context.close()));
+        await Promise.allSettled(contexts.map((context) => context.close()));
       }
     }
   });

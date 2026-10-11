@@ -35,7 +35,10 @@ export function createMfaService(api: MfaApi): MfaService {
     },
     async startSetup() {
       const details = await api.setUpTOTP();
-      return { secret: details.sharedSecret, uri: details.getSetupUri('React Cognito Sandbox').toString() };
+      return {
+        secret: details.sharedSecret,
+        uri: details.getSetupUri('React Cognito Sandbox').toString(),
+      };
     },
     async verifySetup(code) {
       const normalized = code.trim();
@@ -48,7 +51,9 @@ export function createMfaService(api: MfaApi): MfaService {
         // VerifySoftwareToken は誤コードでこの例外を返す場合がある。
         // 有効化 API の未登録エラーとは区別する。
         if (error && typeof error === 'object' && 'name' in error && error.name === 'EnableSoftwareTokenMFAException') {
-          throw Object.assign(new Error('TOTP verification failed'), { name: 'CodeMismatchException' });
+          throw Object.assign(new Error('TOTP verification failed'), {
+            name: 'CodeMismatchException',
+          });
         }
         throw error;
       }

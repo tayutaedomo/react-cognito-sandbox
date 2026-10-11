@@ -1,7 +1,19 @@
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Amplify } from 'aws-amplify';
-import { signInWithRedirect, signOut as amplifySignOut, getCurrentUser, fetchAuthSession, fetchUserAttributes, updateUserAttributes, signIn as amplifySignIn, confirmSignIn, fetchMFAPreference, rememberDevice, forgetDevice } from 'aws-amplify/auth';
+import {
+  signInWithRedirect,
+  signOut as amplifySignOut,
+  getCurrentUser,
+  fetchAuthSession,
+  fetchUserAttributes,
+  updateUserAttributes,
+  signIn as amplifySignIn,
+  confirmSignIn,
+  fetchMFAPreference,
+  rememberDevice,
+  forgetDevice,
+} from 'aws-amplify/auth';
 import { Hub } from 'aws-amplify/utils';
 import { AuthContext } from './AuthContext';
 import { setUpTOTP, verifyTOTPSetup, updateMFAPreference } from 'aws-amplify/auth';
@@ -10,7 +22,12 @@ import { createDeviceService } from './deviceService';
 import { fetchOwnDevices } from './diagnostics';
 import type { User } from './AuthContext';
 
-const mfa = createMfaService({ fetchMFAPreference, setUpTOTP, verifyTOTPSetup, updateMFAPreference });
+const mfa = createMfaService({
+  fetchMFAPreference,
+  setUpTOTP,
+  verifyTOTPSetup,
+  updateMFAPreference,
+});
 const deviceAuth = createDeviceService({
   signIn: amplifySignIn,
   confirmSignIn,
@@ -43,11 +60,11 @@ Amplify.configure({
           scopes: ['email', 'openid', 'profile', 'aws.cognito.signin.user.admin'],
           redirectSignIn: [window.location.origin],
           redirectSignOut: [window.location.origin],
-          responseType: 'code'
-        }
-      }
-    }
-  }
+          responseType: 'code',
+        },
+      },
+    },
+  },
 });
 
 export const AmplifyAuthProvider = ({ children }: { children: ReactNode }) => {
@@ -55,18 +72,18 @@ export const AmplifyAuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   const refreshUser = async () => {
-      try {
-        const currentUser = await getCurrentUser();
-        const session = await fetchAuthSession();
-        
-        setUser({
-          username: currentUser.userId,
-          email: currentUser.signInDetails?.loginId || '',
-          token: session.tokens?.idToken?.toString() || ''
-        });
-      } catch {
-        setUser(null);
-      }
+    try {
+      const currentUser = await getCurrentUser();
+      const session = await fetchAuthSession();
+
+      setUser({
+        username: currentUser.userId,
+        email: currentUser.signInDetails?.loginId || '',
+        token: session.tokens?.idToken?.toString() || '',
+      });
+    } catch {
+      setUser(null);
+    }
   };
 
   useEffect(() => {
@@ -113,10 +130,19 @@ export const AmplifyAuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{
-      user, signIn, signOut, isLoading: loading,
-      getAttributes, updateAttributes, mfa, deviceAuth, refreshUser
-    }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        signIn,
+        signOut,
+        isLoading: loading,
+        getAttributes,
+        updateAttributes,
+        mfa,
+        deviceAuth,
+        refreshUser,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

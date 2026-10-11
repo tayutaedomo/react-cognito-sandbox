@@ -1,0 +1,10 @@
+{
+  "$schema": "./frontend/node_modules/oxfmt/configuration_schema.json",
+  "printWidth": 120,
+  "tabWidth": 2,
+  "useTabs": false,
+  "singleQuote": true,
+  "semi": true,
+  "sortImports": false,
+  "sortPackageJson": false
+}

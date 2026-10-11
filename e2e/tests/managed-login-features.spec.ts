@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 test.describe('Managed Login Features (Advanced)', () => {
   test.skip(
     () => process.env.VITE_USE_MOCK_COGNITO === 'true' || !process.env.VITE_USE_MOCK_COGNITO,
-    'VITE_USE_MOCK_COGNITO が false の実環境でのみ実行します'
+    'VITE_USE_MOCK_COGNITO が false の実環境でのみ実行します',
   );
 
   test('パスワードリセット (Forgot Password) の画面遷移と挙動確認', async ({ page }) => {
@@ -19,7 +19,9 @@ test.describe('Managed Login Features (Advanced)', () => {
     await page.waitForLoadState('networkidle');
 
     // リセットコード送信用のボタンがあるか (Managed Login)
-    await expect(page.locator('input[name="reset_my_password_button"]').or(page.getByRole('button', { name: /reset|送信|Send/i }))).toBeVisible();
+    await expect(
+      page.locator('input[name="reset_my_password_button"]').or(page.getByRole('button', { name: /reset|送信|Send/i })),
+    ).toBeVisible();
     await page.screenshot({ path: 'test-results/screenshots/forgot-password-01.png' });
 
     // ※ ここから先は、実際に登録済み（Verified）のメールアドレスでないと

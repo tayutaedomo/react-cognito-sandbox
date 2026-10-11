@@ -7,7 +7,9 @@ test.describe('remembered device with SRP', () => {
     '専用ユーザーと device tracking 有効の Cognito 環境で明示的に実行する',
   );
 
-  test('trusts the current browser, challenges a new browser, and challenges again after forgetting', async ({ browser }) => {
+  test('trusts the current browser, challenges a new browser, and challenges again after forgetting', async ({
+    browser,
+  }) => {
     test.setTimeout(300_000);
     const email = process.env.MFA_DEVICE_USER_EMAIL;
     const password = process.env.MFA_DEVICE_USER_PASSWORD;
@@ -24,8 +26,8 @@ test.describe('remembered device with SRP', () => {
     }
 
     async function waitForFreshCode() {
-      const remaining = 30_000 - Date.now() % 30_000;
-      await new Promise(resolve => setTimeout(resolve, remaining + 500));
+      const remaining = 30_000 - (Date.now() % 30_000);
+      await new Promise((resolve) => setTimeout(resolve, remaining + 500));
     }
 
     async function login(page: Page, secret: string, expectTotp: boolean) {
@@ -44,7 +46,9 @@ test.describe('remembered device with SRP', () => {
 
     async function signOut(page: Page) {
       await page.getByRole('button', { name: 'サインアウト' }).click();
-      await expect(page.getByRole('button', { name: 'ログイン / 登録 / パスワード再設定 (Managed Login)' })).toBeVisible();
+      await expect(
+        page.getByRole('button', { name: 'ログイン / 登録 / パスワード再設定 (Managed Login)' }),
+      ).toBeVisible();
     }
 
     try {
@@ -72,7 +76,9 @@ test.describe('remembered device with SRP', () => {
       await expect(setup.getByTestId('mfa-status')).toHaveText('TOTP：有効（優先方式）');
       await setup.getByRole('button', { name: 'ホームに戻る' }).click();
       await setup.getByRole('button', { name: 'Sign Out', exact: true }).click();
-      await expect(setup.getByRole('button', { name: 'ログイン / 登録 / パスワード再設定 (Managed Login)' })).toBeVisible();
+      await expect(
+        setup.getByRole('button', { name: 'ログイン / 登録 / パスワード再設定 (Managed Login)' }),
+      ).toBeVisible();
 
       const first = await openPoc(firstContext);
       await login(first, secret, true);
@@ -102,7 +108,7 @@ test.describe('remembered device with SRP', () => {
       await otherBrowser.getByRole('button', { name: 'TOTP を無効にする' }).click();
       await expect(otherBrowser.getByTestId('mfa-status')).toHaveText('TOTP：無効');
     } finally {
-      await Promise.allSettled(contexts.map(context => context.close()));
+      await Promise.allSettled(contexts.map((context) => context.close()));
     }
   });
 });

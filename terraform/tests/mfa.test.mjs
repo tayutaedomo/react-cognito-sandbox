@@ -17,7 +17,9 @@ assert.ok(pool, 'User Pool resource must exist');
 copyFileSync(join(appDir, 'variables.tf'), join(fixture, 'variables.tf'));
 copyFileSync(join(appDir, '.terraform.lock.hcl'), join(fixture, '.terraform.lock.hcl'));
 symlinkSync(join(appDir, '.terraform'), join(fixture, '.terraform'), 'dir');
-writeFileSync(join(fixture, 'main.tf'), `
+writeFileSync(
+  join(fixture, 'main.tf'),
+  `
 terraform {
   required_providers {
     aws = {
@@ -36,7 +38,8 @@ provider "aws" {
   skip_requesting_account_id = true
 }
 ${pool}
-`);
+`,
+);
 
 function terraform(args) {
   const result = spawnSync('terraform', [`-chdir=${fixture}`, ...args], {
@@ -56,8 +59,15 @@ function terraform(args) {
 
 function plan(vars = {}) {
   return terraform([
-    'plan', '-input=false', '-refresh=false', '-lock=false', '-no-color', '-out=plan.tfplan',
-    '-var=project_name=mfa-offline-test', '-var=callback_urls=[]', '-var=logout_urls=[]',
+    'plan',
+    '-input=false',
+    '-refresh=false',
+    '-lock=false',
+    '-no-color',
+    '-out=plan.tfplan',
+    '-var=project_name=mfa-offline-test',
+    '-var=callback_urls=[]',
+    '-var=logout_urls=[]',
     ...Object.entries(vars).map(([key, value]) => `-var=${key}=${value}`),
   ]);
 }
@@ -76,9 +86,7 @@ for (const [name, vars, expectedMode, expectedTotp] of [
     const values = JSON.parse(shown.stdout).planned_values.root_module.resources[0].values;
     assert.equal(values.mfa_configuration, expectedMode);
     assert.equal(values.software_token_mfa_configuration?.[0]?.enabled === true, expectedTotp);
-    assert.deepEqual(values.account_recovery_setting[0].recovery_mechanism, [
-      { name: 'verified_email', priority: 1 },
-    ]);
+    assert.deepEqual(values.account_recovery_setting[0].recovery_mechanism, [{ name: 'verified_email', priority: 1 }]);
   });
 }
 

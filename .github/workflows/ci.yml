@@ -38,6 +38,8 @@ jobs:
         run: |
           npm --prefix frontend run lint -- --deny-warnings
           frontend/node_modules/.bin/oxlint --deny-warnings e2e terraform/tests
+      - name: JavaScript・TypeScript 整形チェック（自動修正なし）
+        run: npm --prefix frontend run format:check
       - name: 単体テスト
         run: |
           npm --prefix frontend run test:unit

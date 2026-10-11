@@ -14,7 +14,7 @@ GitHub Actions で AWS に接続しない検証を実行する。PR ごとの変
 
 | ジョブ | 検証内容 | 外部接続 |
 | --- | --- | --- |
-| Frontend・E2E ヘルパー | frontend の単体テスト・型チェック・ビルド、frontend／E2E／Terraform テストコードの oxlint、E2E ヘルパーの単体テスト | 依存パッケージの取得 |
+| Frontend・E2E ヘルパー | frontend の単体テスト・型チェック・ビルド、frontend／E2E／Terraform テストコードの oxlint・Oxfmt、E2E ヘルパーの単体テスト | 依存パッケージの取得 |
 | Backend | Ruff の Lint・整形チェック、モックと Moto による単体テスト | 依存パッケージの取得 |
 | Terraform | fmt・app／ecr の validate、AWS 非接続の MFA 設定テスト | Terraform Provider の取得 |
 | モック E2E | ローカル frontend とモック backend を起動して Chromium で画面操作 | 依存パッケージ・ブラウザの取得 |
@@ -25,7 +25,7 @@ GitHub Actions で AWS に接続しない検証を実行する。PR ごとの変
 
 PR の作成・更新、main への Push、Actions 画面からの手動実行で起動する。同じブランチで新しい実行が始まった場合は古い実行を取り消す。
 
-Lint は違反があれば（oxlint は警告も含む）、整形チェックはフォーマット差分があれば失敗する。CI 内でファイルを修正しない。整形チェックの対象は Ruff による Python と Terraform fmt による Terraform。JavaScript／TypeScript は既存の oxlint を使い、専用 Formatter は導入していない。
+Lint は違反があれば（oxlint は警告も含む）、整形チェックはフォーマット差分があれば失敗する。CI 内でファイルを修正しない。整形チェックは Oxfmt による JavaScript／TypeScript、Ruff による Python、Terraform fmt による Terraform を対象にする。JavaScript／TypeScript の Lint は既存の oxlint を使う。
 
 PR のマージを必ず止めるには、GitHub のブランチ保護または Ruleset で、このワークフローの各ジョブを必須チェックに指定する。ワークフローの追加だけではマージ禁止の設定にはならない。
 
