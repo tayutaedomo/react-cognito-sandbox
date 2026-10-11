@@ -42,8 +42,14 @@ export function createRecoveryAdmin(env, run = aws) {
     },
     async disable() {
       await requireOptional();
-      await run(['cognito-idp', 'admin-set-user-mfa-preference', ...target,
-        '--software-token-mfa-settings', 'Enabled=false,PreferredMfa=false', ...common]);
+      await run([
+        'cognito-idp',
+        'admin-set-user-mfa-preference',
+        ...target,
+        '--software-token-mfa-settings',
+        'Enabled=false,PreferredMfa=false',
+        ...common,
+      ]);
     },
     async globalSignOut() {
       await requireOptional();

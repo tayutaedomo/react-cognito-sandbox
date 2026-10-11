@@ -27,12 +27,19 @@ test.describe('Optional TOTP MFA', () => {
       await page.locator('#signInFormPassword:visible').fill(password!);
       await page.locator('input[name="signInSubmitButton"]:visible').first().click();
       if (secret) {
-        const input = page.locator('input[name="totpCode"]:visible, input[name="softwareTokenMfaCode"]:visible, input[autocomplete="one-time-code"]:visible')
-          .or(page.getByRole('textbox', { name: /code|コード/i })).first();
+        const input = page
+          .locator(
+            'input[name="totpCode"]:visible, input[name="softwareTokenMfaCode"]:visible, input[autocomplete="one-time-code"]:visible',
+          )
+          .or(page.getByRole('textbox', { name: /code|コード/i }))
+          .first();
         await expect(input).toBeVisible();
-        await new Promise(resolve => setTimeout(resolve, 30_000 - Date.now() % 30_000 + 500));
+        await new Promise((resolve) => setTimeout(resolve, 30_000 - (Date.now() % 30_000) + 500));
         await input.fill(generateTotp(secret));
-        await page.getByRole('button', { name: /confirm|verify|sign in|submit|確認|検証|ログイン|送信/i }).first().click();
+        await page
+          .getByRole('button', { name: /confirm|verify|sign in|submit|確認|検証|ログイン|送信/i })
+          .first()
+          .click();
       }
       await page.waitForURL(`${baseURL}/**`);
       await expect(page.getByRole('button', { name: 'Sign Out', exact: true })).toBeVisible();
@@ -47,7 +54,9 @@ test.describe('Optional TOTP MFA', () => {
     async function signOut(page: Page) {
       await page.getByRole('button', { name: 'ホームに戻る' }).click();
       await page.getByRole('button', { name: 'Sign Out', exact: true }).click();
-      await expect(page.getByRole('button', { name: 'ログイン / 登録 / パスワード再設定 (Managed Login)' })).toBeVisible();
+      await expect(
+        page.getByRole('button', { name: 'ログイン / 登録 / パスワード再設定 (Managed Login)' }),
+      ).toBeVisible();
     }
 
     try {
@@ -69,7 +78,9 @@ test.describe('Optional TOTP MFA', () => {
       await signOut(initial);
 
       const enabled = await signIn(secret);
-      const usersResponse = enabled.waitForResponse(response => response.url().endsWith('/api/users'), { timeout: 30_000 });
+      const usersResponse = enabled.waitForResponse((response) => response.url().endsWith('/api/users'), {
+        timeout: 30_000,
+      });
       await enabled.getByRole('button', { name: 'Fetch Users' }).click();
       expect((await usersResponse).status()).toBe(200);
       await expect(enabled.locator('ul')).toContainText(email!, { timeout: 10_000 });
@@ -92,7 +103,7 @@ test.describe('Optional TOTP MFA', () => {
       await expect(reenabled.getByTestId('mfa-status')).toHaveText('TOTP：無効');
       await signOut(reenabled);
     } finally {
-      await Promise.allSettled(contexts.map(context => context.close()));
+      await Promise.allSettled(contexts.map((context) => context.close()));
     }
   });
 });

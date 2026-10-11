@@ -41,9 +41,7 @@ export default defineConfig({
       cwd: path.resolve(__dirname, '../frontend'),
       env: {
         VITE_USE_MOCK_COGNITO: process.env.VITE_USE_MOCK_COGNITO || 'true',
-        ...(process.env.VITE_USE_MOCK_COGNITO !== 'false'
-          ? { VITE_API_ENDPOINT: 'http://localhost:8000' }
-          : {}),
+        ...(process.env.VITE_USE_MOCK_COGNITO !== 'false' ? { VITE_API_ENDPOINT: 'http://localhost:8000' } : {}),
       },
       url: 'http://localhost:5173',
       reuseExistingServer: !process.env.CI,
@@ -56,6 +54,6 @@ export default defineConfig({
       url: 'http://localhost:8000/api/health',
       reuseExistingServer: !process.env.CI,
       timeout: 120 * 1000,
-    }
+    },
   ],
 });

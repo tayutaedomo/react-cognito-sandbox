@@ -17,33 +17,51 @@ function fixture() {
 describe('MFA settings service', () => {
   it('does not infer stored registration from absent enabled preferences', async () => {
     const { service } = fixture();
-    expect(await service.getPreference()).toEqual({ enabled: false, preferred: false, raw: { enabled: [] } });
+    expect(await service.getPreference()).toEqual({
+      enabled: false,
+      preferred: false,
+      raw: { enabled: [] },
+    });
   });
 
   it('reads enabled TOTP independently of other factors', async () => {
     const { api, service } = fixture();
     api.fetchMFAPreference.mockResolvedValue({ enabled: ['SMS', 'TOTP'], preferred: 'TOTP' });
-    expect(await service.getPreference()).toEqual({ enabled: true, preferred: true, raw: { enabled: ['SMS', 'TOTP'], preferred: 'TOTP' } });
+    expect(await service.getPreference()).toEqual({
+      enabled: true,
+      preferred: true,
+      raw: { enabled: ['SMS', 'TOTP'], preferred: 'TOTP' },
+    });
   });
 
   it('does not treat another factor as TOTP enabled', async () => {
     const { api, service } = fixture();
     api.fetchMFAPreference.mockResolvedValue({ enabled: ['SMS'], preferred: 'SMS' });
-    expect(await service.getPreference()).toEqual({ enabled: false, preferred: false, raw: { enabled: ['SMS'], preferred: 'SMS' } });
+    expect(await service.getPreference()).toEqual({
+      enabled: false,
+      preferred: false,
+      raw: { enabled: ['SMS'], preferred: 'SMS' },
+    });
   });
 
   it('returns a local authenticator URI without enabling MFA', async () => {
     const { api, service } = fixture();
-    expect(await service.startSetup()).toEqual({ secret: 'MOCKSECRET', uri: 'otpauth://totp/Sandbox?secret=MOCKSECRET' });
+    expect(await service.startSetup()).toEqual({
+      secret: 'MOCKSECRET',
+      uri: 'otpauth://totp/Sandbox?secret=MOCKSECRET',
+    });
     expect(api.updateMFAPreference).not.toHaveBeenCalled();
   });
 
-  it.each(['', '12345', '1234567', '12a456', '１２３４５６'])('rejects invalid code %j before API calls', async code => {
-    const { api, service } = fixture();
-    await expect(service.verifySetup(code)).rejects.toMatchObject({ name: 'InvalidTotpCode' });
-    expect(api.verifyTOTPSetup).not.toHaveBeenCalled();
-    expect(api.updateMFAPreference).not.toHaveBeenCalled();
-  });
+  it.each(['', '12345', '1234567', '12a456', '１２３４５６'])(
+    'rejects invalid code %j before API calls',
+    async (code) => {
+      const { api, service } = fixture();
+      await expect(service.verifySetup(code)).rejects.toMatchObject({ name: 'InvalidTotpCode' });
+      expect(api.verifyTOTPSetup).not.toHaveBeenCalled();
+      expect(api.updateMFAPreference).not.toHaveBeenCalled();
+    },
+  );
 
   it('preserves leading zeroes and trims input when verifying', async () => {
     const { api, service } = fixture();
@@ -70,9 +88,13 @@ describe('MFA settings service', () => {
   it('distinguishes verification mismatch from enabling an unregistered factor', async () => {
     const { api, service } = fixture();
     api.verifyTOTPSetup.mockRejectedValue({ name: 'EnableSoftwareTokenMFAException' });
-    await expect(service.verifySetup('000000')).rejects.toMatchObject({ name: 'CodeMismatchException' });
+    await expect(service.verifySetup('000000')).rejects.toMatchObject({
+      name: 'CodeMismatchException',
+    });
     api.updateMFAPreference.mockRejectedValue({ name: 'EnableSoftwareTokenMFAException' });
-    await expect(service.setEnabled(true)).rejects.toMatchObject({ name: 'EnableSoftwareTokenMFAException' });
+    await expect(service.setEnabled(true)).rejects.toMatchObject({
+      name: 'EnableSoftwareTokenMFAException',
+    });
   });
 
   it('disables TOTP preference without changing its association', async () => {

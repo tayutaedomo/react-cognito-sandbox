@@ -4,12 +4,12 @@ import { completeTotp } from '../helpers/complete-totp';
 test.describe('Profile Editing Flow', () => {
   test.skip(
     () => process.env.VITE_USE_MOCK_COGNITO === 'true' || !process.env.VITE_USE_MOCK_COGNITO,
-    'VITE_USE_MOCK_COGNITO が false の実環境でのみ実行します'
+    'VITE_USE_MOCK_COGNITO が false の実環境でのみ実行します',
   );
 
   test('ログインしてプロフィールを編集・保存できること', async ({ page }) => {
     test.setTimeout(60_000); // 使用済み TOTP を避けるため、次の30秒枠を待つ。
-    
+
     await page.goto('/');
 
     // ログインボタンが表示されているか確認 (すでにログイン済みの場合はスキップ)
@@ -25,7 +25,7 @@ test.describe('Profile Editing Flow', () => {
       await page.fill('#signInFormPassword:visible', testPassword);
       await page.locator('input[name="signInSubmitButton"]:visible').first().click();
       await completeTotp(page);
-      
+
       const baseUrl = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:5173';
       await page.waitForURL(`${baseUrl}/**`);
       await page.waitForLoadState('networkidle');
@@ -37,7 +37,7 @@ test.describe('Profile Editing Flow', () => {
     // Profile 編集画面へ遷移
     await page.click('button:has-text("Edit Profile")');
     await expect(page.locator('text=Edit Profile')).toBeVisible(); // h2
-    
+
     // 入力可能な状態になるのを待つ
     await expect(page.locator('input[name="name"]')).toBeEnabled({ timeout: 5000 });
 
@@ -50,19 +50,21 @@ test.describe('Profile Editing Flow', () => {
     await page.click('button:has-text("Save Profile")');
 
     // サクセスメッセージを待つ
-    await expect(page.locator('text=Profile updated successfully!')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('text=Profile updated successfully!')).toBeVisible({
+      timeout: 10000,
+    });
 
     // 一旦ホームに戻る
     await page.click('button:has-text("Back to Home")');
-    
+
     // 再度 Profile を開いて値が保持されているか確認
     await page.click('button:has-text("Edit Profile")');
     await expect(page.locator('input[name="name"]')).toHaveValue(newName);
     await expect(page.locator('input[name="phone_number"]')).toHaveValue('+819012345678');
-    
+
     // ホームに戻る
     await page.click('button:has-text("Back to Home")');
-    
+
     // API ログを出力させるために Fetch Users を実行
     await page.click('button:has-text("Fetch Users")');
     // 何らかのリスト（Users）が表示されるか、またはエラーが出ないことを確認

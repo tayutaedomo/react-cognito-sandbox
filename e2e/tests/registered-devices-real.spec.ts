@@ -15,13 +15,17 @@ test('Hosted UI ログイン後もデバイス一覧を再取得できる', asyn
   await page.locator('#signInFormUsername:visible').fill(email!);
   await page.locator('#signInFormPassword:visible').fill(password!);
   await page.locator('input[name="signInSubmitButton"]:visible').first().click();
-  const codeInput = page.locator('input[name="totpCode"]:visible, input[name="softwareTokenMfaCode"]:visible, input[autocomplete="one-time-code"]:visible');
+  const codeInput = page.locator(
+    'input[name="totpCode"]:visible, input[name="softwareTokenMfaCode"]:visible, input[autocomplete="one-time-code"]:visible',
+  );
   const mfaButton = page.getByRole('button', { name: 'MFA 設定', exact: true });
   await expect(codeInput.or(mfaButton).first()).toBeVisible();
   if (await codeInput.isVisible()) await completeTotp(page);
 
   await mfaButton.click();
-  const loadedDevices = page.locator('[data-testid="registered-devices-list"], [data-testid="registered-devices-empty"]');
+  const loadedDevices = page.locator(
+    '[data-testid="registered-devices-list"], [data-testid="registered-devices-empty"]',
+  );
   await expect(loadedDevices).toBeVisible();
   await expect(page.getByRole('alert')).toHaveCount(0);
 
@@ -49,8 +53,8 @@ test('SRP ログイン後も画面移動と再読み込みでデバイス一覧�
   if (await codeInput.isVisible()) {
     const { generateTotp } = await import('../helpers/totp.mjs');
     expect(process.env.TEST_USER_TOTP_SECRET).toBeTruthy();
-    const remaining = 30_000 - Date.now() % 30_000;
-    await new Promise(resolve => setTimeout(resolve, remaining + 500));
+    const remaining = 30_000 - (Date.now() % 30_000);
+    await new Promise((resolve) => setTimeout(resolve, remaining + 500));
     await codeInput.fill(generateTotp(process.env.TEST_USER_TOTP_SECRET!));
     await page.getByRole('button', { name: '確認', exact: true }).click();
   }

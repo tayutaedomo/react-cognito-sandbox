@@ -6,6 +6,7 @@
 - [環境構築と起動](#環境構築と起動)
 - [E2E テスト (Playwright)](#e2e-テスト-playwright)
 - [Lint](#lint)
+- [コードの整形](#コードの整形)
 - [単体テスト](#単体テスト)
   - [実行方法](#実行方法)
   - [AWS 通信を置き換える仕組み](#aws-通信を置き換える仕組み)
@@ -50,6 +51,19 @@ frontend と backend を横断する E2E テストは、ルート直下の `e2e/
 npm run lint
 ```
 (Vite テンプレートに標準搭載されている高速な Linter `oxlint` を使用しています)
+
+## コードの整形
+
+以下はプロジェクトルートから実行します。Oxfmt は frontend の開発依存で管理し、frontend・E2E・Terraform 補助テストの JavaScript／TypeScript を同じ設定で整形します。
+
+| 目的 | コマンド | ファイルの更新 |
+| --- | --- | --- |
+| 整形を適用 | `npm --prefix frontend run format` | あり |
+| 整形漏れを確認 | `npm --prefix frontend run format:check` | なし。差分があれば失敗 |
+
+共通設定は [Oxfmt 設定](../.oxfmtrc.json)です。2スペース、シングルクォート、セミコロンありで統一し、改行の目安を120文字にします。長い文字列など、すべての行が120文字以内になるとは限りません。import の並び替えは行いません。
+
+oxlint はコードの問題を検出し、Oxfmt は改行・字下げなどを整えます。CI は両方を検査し、自動修正は行いません。Python は Ruff、Terraform は Terraform fmt を使います。Markdown・JSON・CSS などは今回の Oxfmt コマンドの対象外です。
 
 ## 単体テスト
 

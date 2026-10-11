@@ -8,14 +8,14 @@ test.describe('Real Cognito Authentication Flow', () => {
   // テストの事前準備
   test.skip(
     () => process.env.VITE_USE_MOCK_COGNITO === 'true' || !process.env.VITE_USE_MOCK_COGNITO,
-    'VITE_USE_MOCK_COGNITO が false の実環境でのみ実行します'
+    'VITE_USE_MOCK_COGNITO が false の実環境でのみ実行します',
   );
 
   test('Hosted UI でログインし、ユーザー一覧を取得できること', async ({ page }) => {
     test.setTimeout(60_000); // 使用済み TOTP を避けるため、次の30秒枠を待つ。
     // 1. トップページへアクセス
     await page.goto('/');
-    
+
     // 初期状態の確認
     await expect(page.locator('text=ログイン、新規登録、またはパスワードを忘れた場合の再設定は')).toBeVisible();
     await page.screenshot({ path: 'test-results/screenshots/real-01-initial.png' });
@@ -32,10 +32,10 @@ test.describe('Real Cognito Authentication Flow', () => {
     // 3. Hosted UI 上で認証情報の入力
     const testEmail = process.env.TEST_USER_EMAIL || 'test@example.com';
     const testPassword = process.env.TEST_USER_PASSWORD || 'Password123!';
-    
+
     await page.fill('#signInFormUsername:visible', testEmail);
     await page.fill('#signInFormPassword:visible', testPassword);
-    
+
     // signInSubmitButton が複数ある場合を考慮し、可視状態のボタンをクリックする
     await page.locator('input[name="signInSubmitButton"]:visible').first().click();
     await completeTotp(page);
@@ -51,7 +51,7 @@ test.describe('Real Cognito Authentication Flow', () => {
 
     // 6. ユーザー情報 (API Gateway 経由) の取得確認
     await page.click('button:has-text("Fetch Users")');
-    
+
     // "test@example.com" など、実際の Cognito に存在するユーザーが画面に描画されるはず
     await expect(page.locator('ul')).toContainText(testEmail, { timeout: 10000 });
     await page.screenshot({ path: 'test-results/screenshots/real-04-after-fetch.png' });

@@ -16,16 +16,24 @@ export function MockAuthProvider({ children }: Props) {
     let registered = false;
     let enabled = false;
     return createMfaService({
-      async fetchMFAPreference() { return { enabled: enabled ? ['TOTP'] : [], preferred: enabled ? 'TOTP' : undefined }; },
+      async fetchMFAPreference() {
+        return { enabled: enabled ? ['TOTP'] : [], preferred: enabled ? 'TOTP' : undefined };
+      },
       async setUpTOTP() {
-        return { sharedSecret: 'JBSWY3DPEHPK3PXP', getSetupUri: () => new URL('otpauth://totp/Mock?secret=JBSWY3DPEHPK3PXP&issuer=Mock') };
+        return {
+          sharedSecret: 'JBSWY3DPEHPK3PXP',
+          getSetupUri: () => new URL('otpauth://totp/Mock?secret=JBSWY3DPEHPK3PXP&issuer=Mock'),
+        };
       },
       async verifyTOTPSetup({ code }) {
         if (code !== '123456') throw Object.assign(new Error('Mock mismatch'), { name: 'CodeMismatchException' });
         registered = true;
       },
       async updateMFAPreference({ totp }) {
-        if (totp === 'PREFERRED' && !registered) throw Object.assign(new Error('Mock unregistered'), { name: 'EnableSoftwareTokenMFAException' });
+        if (totp === 'PREFERRED' && !registered)
+          throw Object.assign(new Error('Mock unregistered'), {
+            name: 'EnableSoftwareTokenMFAException',
+          });
         enabled = totp === 'PREFERRED';
       },
     });
@@ -33,31 +41,66 @@ export function MockAuthProvider({ children }: Props) {
   const [mockAttributes, setMockAttributes] = useState<Record<string, string>>({
     email: 'mock@example.com',
     name: 'Mock User',
-    phone_number: '+819012345678'
+    phone_number: '+819012345678',
   });
   const [deviceAuth] = useState(() => {
     let remembered = false;
     let signedIn = false;
-    const mockSession = () => ({ tokens: signedIn ? {
-      accessToken: { payload: { device_key: 'mock-device', exp: Math.floor(Date.now() / 1000) + 3600 } },
-      idToken: { payload: { exp: Math.floor(Date.now() / 1000) + 3600 } },
-    } : undefined });
+    const mockSession = () => ({
+      tokens: signedIn
+        ? {
+            accessToken: {
+              payload: { device_key: 'mock-device', exp: Math.floor(Date.now() / 1000) + 3600 },
+            },
+            idToken: { payload: { exp: Math.floor(Date.now() / 1000) + 3600 } },
+          }
+        : undefined,
+    });
     return createDeviceService({
-      async signIn() { return { isSignedIn: false, nextStep: { signInStep: 'CONFIRM_SIGN_IN_WITH_TOTP_CODE' } }; },
+      async signIn() {
+        return { isSignedIn: false, nextStep: { signInStep: 'CONFIRM_SIGN_IN_WITH_TOTP_CODE' } };
+      },
       async confirmSignIn({ challengeResponse }) {
-        if (challengeResponse !== '123456') throw Object.assign(new Error('Mismatch'), { name: 'NotAuthorizedException' });
+        if (challengeResponse !== '123456')
+          throw Object.assign(new Error('Mismatch'), { name: 'NotAuthorizedException' });
         signedIn = true;
         return { isSignedIn: true, nextStep: { signInStep: 'DONE' } };
       },
-      async fetchMFAPreference() { return { enabled: ['TOTP'] }; },
-      async fetchDevices() { return remembered ? [{ id: 'mock-device', name: 'Mock device', attributes: { device_status: 'valid', 'dev:device_remembered_status': 'remembered' } }] : []; },
-      async fetchAuthSession() { return mockSession(); },
-      async rememberDevice() { remembered = true; },
-      async forgetDevice() { remembered = false; },
+      async fetchMFAPreference() {
+        return { enabled: ['TOTP'] };
+      },
+      async fetchDevices() {
+        return remembered
+          ? [
+              {
+                id: 'mock-device',
+                name: 'Mock device',
+                attributes: {
+                  device_status: 'valid',
+                  'dev:device_remembered_status': 'remembered',
+                },
+              },
+            ]
+          : [];
+      },
+      async fetchAuthSession() {
+        return mockSession();
+      },
+      async rememberDevice() {
+        remembered = true;
+      },
+      async forgetDevice() {
+        remembered = false;
+      },
     });
   });
   const refreshUser = async () => {
-    if (!user) setUser({ username: 'mock_device_user', email: mockAttributes.email, token: 'dummy_mock_token' });
+    if (!user)
+      setUser({
+        username: 'mock_device_user',
+        email: mockAttributes.email,
+        token: 'dummy_mock_token',
+      });
   };
 
   const signIn = () => {
@@ -67,7 +110,7 @@ export function MockAuthProvider({ children }: Props) {
       setUser({
         username: 'mock_user_123',
         email: mockAttributes.email,
-        token: 'dummy_mock_token'
+        token: 'dummy_mock_token',
       });
       setIsLoading(false);
     }, 500);
@@ -82,14 +125,23 @@ export function MockAuthProvider({ children }: Props) {
   };
 
   const updateAttributes = async (attributes: Record<string, string>) => {
-    setMockAttributes(prev => ({ ...prev, ...attributes }));
+    setMockAttributes((prev) => ({ ...prev, ...attributes }));
   };
 
   return (
-    <AuthContext.Provider value={{ 
-      user, signIn, signOut, isLoading,
-      getAttributes, updateAttributes, mfa, deviceAuth, refreshUser
-    }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        signIn,
+        signOut,
+        isLoading,
+        getAttributes,
+        updateAttributes,
+        mfa,
+        deviceAuth,
+        refreshUser,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

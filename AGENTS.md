@@ -46,6 +46,8 @@ AI 利用の POC として、合意した作業範囲の修正・検証・ロー
 バックエンドの Python を変更した場合は `backend/` ディレクトリで実行してください。
 他の場所に Python を追加・変更した場合は、`backend/` から対象パスを指定して実行し、無関係なファイルに修正を広げないでください。
 
+JavaScript／TypeScript を変更した場合は、プロジェクトルートで `npm --prefix frontend run format` と `npm --prefix frontend run format:check` を実行してください。frontend・E2E・Terraform 補助テストが対象です。Oxfmt の整形と oxlint の静的解析を別々に実施してください。
+
 ## 4. アーキテクチャ決定記録 (ADR) の提案義務 (Mandatory ADR Drafting)
 **重要な技術的決定、設計のトレードオフ、または採用を見送ったアプローチがあった場合、Agent は自発的に ADR の草案を作成しなければなりません。**
 Agent はユーザーからの指示を待つのではなく、作業の区切りごとに「この決定は ADR に残すべきか？」を必ず自問自答してください。必要と判断した場合は草案をユーザーに提示し、ユーザーに採用可否の判断を仰いでください。

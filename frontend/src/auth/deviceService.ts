@@ -57,7 +57,9 @@ export type DeviceSignInStep = 'signedIn' | 'totp';
 function mapSignInResult(result: SignInResult): DeviceSignInStep {
   if (result.isSignedIn) return 'signedIn';
   if (result.nextStep.signInStep === 'CONFIRM_SIGN_IN_WITH_TOTP_CODE') return 'totp';
-  throw Object.assign(new Error('Unsupported device POC sign-in step'), { name: 'UnsupportedDeviceSignInStep' });
+  throw Object.assign(new Error('Unsupported device POC sign-in step'), {
+    name: 'UnsupportedDeviceSignInStep',
+  });
 }
 
 function tokenExpiration(payload?: Record<string, unknown>): Date | undefined {
@@ -73,14 +75,18 @@ export function deviceTrustStatus(device: DeviceRecord): DeviceTrustStatus {
 
 function currentDeviceStatus(key: string | undefined, devices: DeviceRecord[]): CurrentDeviceStatus {
   if (!key) return 'unavailable';
-  const device = devices.find(candidate => candidate.id === key);
+  const device = devices.find((candidate) => candidate.id === key);
   return device ? deviceTrustStatus(device) : 'not_listed';
 }
 
 export function createDeviceService(api: DeviceApi): DeviceAuthService {
   return {
     async signIn(username: string, password: string): Promise<DeviceSignInStep> {
-      const result = await api.signIn({ username, password, options: { authFlowType: 'USER_SRP_AUTH' } });
+      const result = await api.signIn({
+        username,
+        password,
+        options: { authFlowType: 'USER_SRP_AUTH' },
+      });
       return mapSignInResult(result);
     },
     async confirmTotp(code: string): Promise<DeviceSignInStep> {
@@ -91,7 +97,9 @@ export function createDeviceService(api: DeviceApi): DeviceAuthService {
     },
     async snapshot(): Promise<DeviceSnapshot> {
       const [preference, devices, session] = await Promise.all([
-        api.fetchMFAPreference(), api.fetchDevices(), api.fetchAuthSession(),
+        api.fetchMFAPreference(),
+        api.fetchDevices(),
+        api.fetchAuthSession(),
       ]);
       const accessPayload = session.tokens?.accessToken?.payload;
       const idPayload = session.tokens?.idToken?.payload;
@@ -118,7 +126,9 @@ export function createDeviceService(api: DeviceApi): DeviceAuthService {
 export function deviceErrorMessage(error: unknown): string {
   const name = error && typeof error === 'object' && 'name' in error ? error.name : undefined;
   if (name === 'InvalidTotpCode') return '半角数字6桁のコードを入力してください。';
-  if (name === 'NotAuthorizedException' || name === 'UserNotFoundException') return 'メールアドレス、パスワード、または認証コードを確認してください。';
-  if (name === 'UnsupportedDeviceSignInStep') return 'この POC が扱わない認証ステップです。TOTP が有効な専用ユーザーでお試しください。';
+  if (name === 'NotAuthorizedException' || name === 'UserNotFoundException')
+    return 'メールアドレス、パスワード、または認証コードを確認してください。';
+  if (name === 'UnsupportedDeviceSignInStep')
+    return 'この POC が扱わない認証ステップです。TOTP が有効な専用ユーザーでお試しください。';
   return '端末認証を完了できませんでした。設定とサインイン状態を確認してください。';
 }
