@@ -1,6 +1,7 @@
 export interface MfaPreference {
   enabled: boolean;
   preferred: boolean;
+  raw?: { enabled?: string[]; preferred?: string };
 }
 
 export interface TotpSetup {
@@ -29,6 +30,7 @@ export function createMfaService(api: MfaApi): MfaService {
       return {
         enabled: preference.enabled?.includes('TOTP') ?? false,
         preferred: preference.preferred === 'TOTP',
+        raw: preference,
       };
     },
     async startSetup() {

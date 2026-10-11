@@ -1,12 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createDeviceService, deviceErrorMessage } from '../src/auth/deviceService';
+import { createDeviceService, deviceErrorMessage, deviceTrustStatus } from '../src/auth/deviceService';
 
 function fixture() {
   const api = {
     signIn: vi.fn().mockResolvedValue({ isSignedIn: false, nextStep: { signInStep: 'CONFIRM_SIGN_IN_WITH_TOTP_CODE' } }),
     confirmSignIn: vi.fn().mockResolvedValue({ isSignedIn: true, nextStep: { signInStep: 'DONE' } }),
     fetchMFAPreference: vi.fn().mockResolvedValue({ enabled: ['TOTP'] }),
-    fetchDevices: vi.fn().mockResolvedValue([{ id: 'device-1', name: 'Browser' }]),
+    fetchDevices: vi.fn().mockResolvedValue([{ id: 'device-1', name: 'Browser', attributes: { 'dev:device_remembered_status': 'remembered' } }]),
     fetchAuthSession: vi.fn().mockResolvedValue({ tokens: {
       accessToken: { payload: { device_key: 'device-1', exp: 2_000_000_000 } },
       idToken: { payload: { exp: 2_000_000_100 } },
@@ -37,9 +37,32 @@ describe('trusted device service', () => {
   it('separates remembered device status from token expiration', async () => {
     const { service } = fixture();
     const snapshot = await service.snapshot();
-    expect(snapshot).toMatchObject({ totpEnabled: true, currentDeviceKey: 'device-1', currentDeviceRemembered: true });
+    expect(snapshot).toMatchObject({ totpEnabled: true, currentDeviceKey: 'device-1', currentDeviceStatus: 'remembered' });
     expect(snapshot.accessTokenExpiresAt?.toISOString()).toBe('2033-05-18T03:33:20.000Z');
     expect(snapshot.idTokenExpiresAt?.toISOString()).toBe('2033-05-18T03:35:00.000Z');
+  });
+
+  it('does not treat a registered but untrusted device as trusted', async () => {
+    const { api, service } = fixture();
+    api.fetchDevices.mockResolvedValue([{ id: 'device-1', attributes: { 'dev:device_remembered_status': 'not_remembered' } }]);
+    expect((await service.snapshot()).currentDeviceStatus).toBe('not_remembered');
+  });
+
+  it('keeps missing status, missing device, and a login without a device key distinct', async () => {
+    const { api, service } = fixture();
+    api.fetchDevices.mockResolvedValue([{ id: 'device-1' }]);
+    expect((await service.snapshot()).currentDeviceStatus).toBe('unknown');
+    expect(deviceTrustStatus({ id: 'device-1' })).toBe('unknown');
+    expect(deviceTrustStatus({ id: 'device-1', attributes: { device_status: 'valid' } })).toBe('unknown');
+
+    api.fetchDevices.mockResolvedValue([]);
+    expect((await service.snapshot()).currentDeviceStatus).toBe('not_listed');
+
+    api.fetchAuthSession.mockResolvedValue({ tokens: { accessToken: { payload: {} } } });
+    api.fetchDevices.mockResolvedValue([{ id: 'device-1', name: 'Browser' }]);
+    const snapshot = await service.snapshot();
+    expect(snapshot.currentDeviceStatus).toBe('unavailable');
+    expect(snapshot.devices).toHaveLength(1);
   });
 
   it('delegates current-device remember and forget operations', async () => {

@@ -43,7 +43,7 @@ flowchart TD
     Authorizer -.->|Validate| Cognito
     Authorizer -->|Allow| APIGW
     APIGW -->|Proxy| Lambda
-    Lambda -->|ListUsers via boto3| Cognito
+    Lambda -->|ListUsers / AdminListDevices via boto3| Cognito
 ```
 
 ### サインインと本人の属性管理
@@ -56,6 +56,8 @@ flowchart TD
 - API Gateway の JWT Authorizer が認証を担い、FastAPI は Lambda Web Adapter 経由で動作します。
 - `GET /api/health` と CORS プリフライト用の `OPTIONS /api/{proxy+}` は、JWT 認証を要求しないルートとして定義されています。
 - バックエンドは IAM ロールの権限で Cognito の `ListUsers` を呼び出します。ユーザー情報は Cognito 内で管理します。
+- `GET /api/me/devices` は検証済み本人のデバイスだけを `AdminListDevices` で取得し、信頼状態と各属性を返します。
+
 ### MFA の設定
 
 - MFA は Terraform で `OFF` / `OPTIONAL` / `ON` と TOTP を設定可能です。デフォルトは無効で、必須・任意それぞれの POC 用設定例を用意しています。

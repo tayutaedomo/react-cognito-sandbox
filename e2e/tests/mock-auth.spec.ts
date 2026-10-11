@@ -11,6 +11,8 @@ test.describe('Mock Auth and API E2E', () => {
     await page.getByRole('button', { name: 'ログイン / 登録 / パスワード再設定 (Managed Login)' }).click();
     await page.getByRole('button', { name: 'MFA 設定', exact: true }).click();
     await expect(page.getByTestId('mfa-status')).toHaveText('TOTP：無効');
+    await expect(page.getByTestId('registered-devices-empty')).toBeVisible();
+    await expect(page.getByText('このログインでは現在のブラウザを特定できません。')).toBeVisible();
     await page.screenshot({ path: 'test-results/screenshots/04-mfa-disabled.png', fullPage: true });
     await page.getByRole('button', { name: '登録済みの認証アプリを有効にする' }).click();
     await expect(page.getByRole('alert')).toContainText('登録');
@@ -44,6 +46,42 @@ test.describe('Mock Auth and API E2E', () => {
     await expect(page.getByRole('img')).toHaveCount(0);
     await expect(page.getByTestId('totp-secret')).toHaveCount(0);
     await expect(page.getByTestId('mfa-status')).toHaveText('TOTP：無効');
+  });
+
+  test('shows registered devices after leaving the SRP sign-in screen', async ({ page }) => {
+    await page.goto('/');
+    await page.getByRole('button', { name: 'メールアドレスでログイン（SRP）' }).click();
+    await page.getByLabel('メールアドレス').fill('mock@example.com');
+    await page.getByLabel('パスワード').fill('mock-password');
+    await page.getByRole('button', { name: 'SRP でログイン' }).click();
+    await page.getByLabel('認証アプリの6桁コード').fill('123456');
+    await page.getByRole('button', { name: '確認', exact: true }).click();
+    await expect(page.getByTestId('device-remembered-status')).toHaveText('この端末：一覧にありません');
+    await page.getByRole('button', { name: 'このブラウザを信頼する' }).click();
+    await expect(page.getByTestId('device-remembered-status')).toHaveText('この端末：信頼済み');
+
+    await page.getByRole('button', { name: 'ホームに戻る' }).click();
+    await page.getByRole('button', { name: 'MFA 設定', exact: true }).click();
+    await expect(page.getByTestId('registered-devices-list')).toContainText('Mock device（このブラウザ）');
+    await expect(page.getByTestId('registered-devices-list')).toContainText('信頼済み');
+    await page.evaluate(() => {
+      localStorage.setItem('test.deviceKey', 'mock-device');
+      localStorage.setItem('test.randomPassword', 'mock-secret-only');
+      localStorage.setItem('test.idToken', 'mock-token-only');
+      localStorage.setItem('test.other', 'mock-other-only');
+    });
+    await page.getByRole('button', { name: 'localStorage を読み込む' }).click();
+    const storage = page.getByRole('region', { name: 'このブラウザの保存情報' });
+    await expect(storage).toContainText('Cognito の対応デバイス：Mock device（信頼済み）');
+    await storage.locator('summary').filter({ hasText: 'test.randomPassword' }).click();
+    await expect(storage).not.toContainText('mock-secret-only');
+    await storage.getByRole('button', { name: 'マスクを解除して表示' }).click();
+    await expect(storage).toContainText('mock-secret-only');
+    await page.getByRole('button', { name: 'localStorage を読み込む' }).click();
+    await expect(storage).not.toContainText('mock-secret-only');
+    await page.screenshot({ path: 'test-results/screenshots/08-registered-devices-mock.png', fullPage: true });
+    await page.getByRole('button', { name: 'デバイス一覧を再読み込み' }).click();
+    await expect(page.getByTestId('registered-devices-list')).toContainText('Mock device');
   });
 
   test('should sign in with mock and fetch users', async ({ page }) => {

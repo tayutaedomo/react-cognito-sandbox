@@ -5,8 +5,16 @@ import { deviceErrorMessage } from '../auth/deviceService';
 import type { DeviceSnapshot } from '../auth/deviceService';
 
 function formatDate(value?: Date) {
-  return value ? value.toLocaleString() : '取得できません';
+  return value ? value.toLocaleString('ja-JP') : '取得できません';
 }
+
+const currentDeviceLabels = {
+  remembered: '信頼済み',
+  not_remembered: '未信頼',
+  unknown: '信頼状態を取得できません',
+  not_listed: '一覧にありません',
+  unavailable: 'このログインでは判定できません',
+};
 
 export default function DevicePoc({ onBack }: { onBack: () => void }) {
   const { deviceAuth, refreshUser, signOut } = useAuth();
@@ -39,9 +47,10 @@ export default function DevicePoc({ onBack }: { onBack: () => void }) {
       const result = await deviceAuth.signIn(email, password);
       if (result === 'totp') setStep('totp');
       else {
+        setPassword('');
         await refreshUser();
-        await loadSnapshot();
         setStep('devices');
+        await loadSnapshot();
       }
     });
   }
@@ -52,10 +61,10 @@ export default function DevicePoc({ onBack }: { onBack: () => void }) {
       const result = await deviceAuth.confirmTotp(code);
       if (result === 'totp') throw new Error('Repeated TOTP challenge');
       await refreshUser();
-      await loadSnapshot();
       setPassword('');
       setCode('');
       setStep('devices');
+      await loadSnapshot();
     });
   }
 
@@ -76,15 +85,15 @@ export default function DevicePoc({ onBack }: { onBack: () => void }) {
   return <main className="app-shell app-shell--narrow">
     <header className="page-heading">
       <button className="button-link" onClick={onBack} disabled={busy}>ホームに戻る</button>
-      <h2>信頼するデバイス POC</h2>
-      <p>この実験用ログインは Cognito User Pools の SRP 認証を使います。通常の Hosted UI はそのまま利用できます。</p>
+      <h2>SRP ログイン</h2>
+      <p>メールアドレスとパスワードでログインします。Managed Login も引き続き利用できます。</p>
     </header>
     <section className="panel">
       {error && <p className="feedback feedback--error" role="alert">{error}</p>}
       {message && <p className="feedback feedback--success" role="status">{message}</p>}
       {busy && <p className="feedback feedback--busy" role="status">処理中...</p>}
       {step === 'credentials' && <form className="form-stack" onSubmit={submitCredentials}>
-        <h3>専用ユーザーでログイン</h3>
+        <h3>ログイン</h3>
         <div className="form-field">
           <label htmlFor="device-email">メールアドレス</label>
           <input id="device-email" type="email" autoComplete="username" required value={email} onChange={event => setEmail(event.target.value)} disabled={busy} />
@@ -107,7 +116,7 @@ export default function DevicePoc({ onBack }: { onBack: () => void }) {
         <h3>現在の認証状態</h3>
         <div className="metric-grid">
           <p className="metric" data-testid="device-totp-status">TOTP：{snapshot.totpEnabled ? '有効' : '無効'}</p>
-          <p className={`metric${snapshot.currentDeviceRemembered ? ' metric--positive' : ''}`} data-testid="device-remembered-status">この端末：{snapshot.currentDeviceRemembered ? '信頼済み' : '未登録'}</p>
+          <p className={`metric${snapshot.currentDeviceStatus === 'remembered' ? ' metric--positive' : ''}`} data-testid="device-remembered-status">この端末：{currentDeviceLabels[snapshot.currentDeviceStatus]}</p>
           <p className="metric">デバイス信頼の期限：Cognito に自動期限なし</p>
           <p className="metric">アクセストークン期限：{formatDate(snapshot.accessTokenExpiresAt)}</p>
           <p className="metric">ID トークン期限：{formatDate(snapshot.idTokenExpiresAt)}</p>
@@ -115,9 +124,8 @@ export default function DevicePoc({ onBack }: { onBack: () => void }) {
           <p className="metric">登録済みデバイス数：{snapshot.devices.length}</p>
         </div>
         <div className="action-row">
-          {snapshot.currentDeviceRemembered
-            ? <button className="button-danger" onClick={() => { void forget(); }} disabled={busy}>この端末の信頼を解除</button>
-            : <button className="button-primary" onClick={() => { void remember(); }} disabled={busy}>このブラウザを信頼する</button>}
+          {snapshot.currentDeviceStatus !== 'remembered' && <button className="button-primary" onClick={() => { void remember(); }} disabled={busy}>このブラウザを信頼する</button>}
+          {snapshot.currentDeviceStatus !== 'not_listed' && <button className="button-danger" onClick={() => { void forget(); }} disabled={busy}>この端末の信頼を解除</button>}
           <button onClick={() => { void run(loadSnapshot); }} disabled={busy}>状態を再読み込み</button>
           <button onClick={() => { void leave(); }} disabled={busy}>サインアウト</button>
         </div>

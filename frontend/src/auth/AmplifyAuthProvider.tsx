@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Amplify } from 'aws-amplify';
-import { signInWithRedirect, signOut as amplifySignOut, getCurrentUser, fetchAuthSession, fetchUserAttributes, updateUserAttributes, signIn as amplifySignIn, confirmSignIn, fetchMFAPreference, fetchDevices, rememberDevice, forgetDevice } from 'aws-amplify/auth';
+import { signInWithRedirect, signOut as amplifySignOut, getCurrentUser, fetchAuthSession, fetchUserAttributes, updateUserAttributes, signIn as amplifySignIn, confirmSignIn, fetchMFAPreference, rememberDevice, forgetDevice } from 'aws-amplify/auth';
 import { Hub } from 'aws-amplify/utils';
 import { AuthContext } from './AuthContext';
 import { setUpTOTP, verifyTOTPSetup, updateMFAPreference } from 'aws-amplify/auth';
 import { createMfaService } from './mfaService';
 import { createDeviceService } from './deviceService';
+import { fetchOwnDevices } from './diagnostics';
 import type { User } from './AuthContext';
 
 const mfa = createMfaService({ fetchMFAPreference, setUpTOTP, verifyTOTPSetup, updateMFAPreference });
@@ -14,7 +15,11 @@ const deviceAuth = createDeviceService({
   signIn: amplifySignIn,
   confirmSignIn,
   fetchMFAPreference,
-  fetchDevices,
+  async fetchDevices() {
+    const session = await fetchAuthSession();
+    const token = session.tokens?.idToken?.toString();
+    return fetchOwnDevices(import.meta.env.VITE_API_ENDPOINT, token);
+  },
   fetchAuthSession,
   rememberDevice,
   forgetDevice,

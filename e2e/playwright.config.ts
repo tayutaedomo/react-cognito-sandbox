@@ -18,7 +18,7 @@ if (process.env.VITE_USE_MOCK_COGNITO === 'false') {
 
 export default defineConfig({
   testDir: './tests',
-  reporter: [['html', { outputFolder: path.resolve(__dirname, 'playwright-report') }]],
+  reporter: [['html', { outputFolder: path.resolve(__dirname, 'playwright-report'), open: 'never' }]],
   outputDir: path.resolve(__dirname, 'test-results'),
   fullyParallel: true,
   retries: 0,
@@ -26,7 +26,8 @@ export default defineConfig({
   use: {
     baseURL: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:5173',
     // 実 Cognito のトレースにパスワード・TOTP コードを記録しない。
-    trace: process.env.VITE_USE_MOCK_COGNITO === 'false' ? 'off' : 'on-first-retry',
+    trace: process.env.VITE_USE_MOCK_COGNITO === 'false' ? 'off' : 'retain-on-failure',
+    screenshot: process.env.VITE_USE_MOCK_COGNITO === 'false' ? 'off' : 'only-on-failure',
   },
   projects: [
     {

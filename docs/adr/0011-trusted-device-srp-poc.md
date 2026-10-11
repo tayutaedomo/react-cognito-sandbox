@@ -12,9 +12,13 @@
 
 提案
 
+後続の情報表示と SRP ログインの位置付け変更は [ADR 0012](./0012-device-diagnostics-admin-api.md) を参照する。
+
 ## コンテキスト
 
-既存の Hosted UI を維持しつつ、Cognito のデバイス記憶による MFA 省略を評価したい。記憶デバイスを操作する Amplify Auth API は User Pools API のサインイン経路で利用する。OAuth / Hosted UI のログイン経路ではデバイス記憶を確認できない。
+既存の Hosted UI を維持しつつ、Cognito のデバイス記憶による MFA 省略を評価したい。記憶デバイスを操作する Amplify Auth API は User Pools API のサインイン経路で利用する。OAuth / Hosted UI のログイン経路では、記憶済みデバイスによる MFA 省略を利用できない。
+
+表現の訂正：後続の実装では Hosted UI ログイン後もデバイス一覧を表示できる。「デバイス記憶を確認できない」は、一覧取得まで不可という意味に読めるため訂正した。
 
 ## 決定
 

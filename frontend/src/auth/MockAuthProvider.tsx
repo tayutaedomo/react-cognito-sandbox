@@ -39,7 +39,7 @@ export function MockAuthProvider({ children }: Props) {
     let remembered = false;
     let signedIn = false;
     const mockSession = () => ({ tokens: signedIn ? {
-      accessToken: { payload: { device_key: remembered ? 'mock-device' : undefined, exp: Math.floor(Date.now() / 1000) + 3600 } },
+      accessToken: { payload: { device_key: 'mock-device', exp: Math.floor(Date.now() / 1000) + 3600 } },
       idToken: { payload: { exp: Math.floor(Date.now() / 1000) + 3600 } },
     } : undefined });
     return createDeviceService({
@@ -50,7 +50,7 @@ export function MockAuthProvider({ children }: Props) {
         return { isSignedIn: true, nextStep: { signInStep: 'DONE' } };
       },
       async fetchMFAPreference() { return { enabled: ['TOTP'] }; },
-      async fetchDevices() { return remembered ? [{ id: 'mock-device', name: 'Mock device' }] : []; },
+      async fetchDevices() { return remembered ? [{ id: 'mock-device', name: 'Mock device', attributes: { device_status: 'valid', 'dev:device_remembered_status': 'remembered' } }] : []; },
       async fetchAuthSession() { return mockSession(); },
       async rememberDevice() { remembered = true; },
       async forgetDevice() { remembered = false; },

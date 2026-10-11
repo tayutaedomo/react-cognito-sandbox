@@ -19,7 +19,7 @@ test.describe('remembered device with SRP', () => {
     async function openPoc(context: Awaited<ReturnType<Browser['newContext']>>) {
       const page = await context.newPage();
       await page.goto('/');
-      await page.getByRole('button', { name: '信頼するデバイス POC（SRP ログイン）' }).click();
+      await page.getByRole('button', { name: 'メールアドレスでログイン（SRP）' }).click();
       return page;
     }
 
@@ -76,7 +76,7 @@ test.describe('remembered device with SRP', () => {
 
       const first = await openPoc(firstContext);
       await login(first, secret, true);
-      await expect(first.getByTestId('device-remembered-status')).toHaveText('この端末：未登録');
+      await expect(first.getByTestId('device-remembered-status')).toHaveText('この端末：一覧にありません');
       await first.getByRole('button', { name: 'このブラウザを信頼する' }).click();
       await expect(first.getByTestId('device-remembered-status')).toHaveText('この端末：信頼済み');
       await signOut(first);
@@ -85,18 +85,18 @@ test.describe('remembered device with SRP', () => {
       await login(sameBrowser, secret, false);
       await expect(sameBrowser.getByTestId('device-remembered-status')).toHaveText('この端末：信頼済み');
       await sameBrowser.getByRole('button', { name: 'この端末の信頼を解除' }).click();
-      await expect(sameBrowser.getByTestId('device-remembered-status')).toHaveText('この端末：未登録');
+      await expect(sameBrowser.getByTestId('device-remembered-status')).toHaveText('この端末：一覧にありません');
       await signOut(sameBrowser);
       const forgottenBrowser = await openPoc(firstContext);
       await login(forgottenBrowser, secret, true);
-      await expect(forgottenBrowser.getByTestId('device-remembered-status')).toHaveText('この端末：未登録');
+      await expect(forgottenBrowser.getByTestId('device-remembered-status')).toHaveText('この端末：一覧にありません');
       await signOut(forgottenBrowser);
 
       const otherContext = await browser.newContext({ baseURL });
       contexts.push(otherContext);
       const otherBrowser = await openPoc(otherContext);
       await login(otherBrowser, secret, true);
-      await expect(otherBrowser.getByTestId('device-remembered-status')).toHaveText('この端末：未登録');
+      await expect(otherBrowser.getByTestId('device-remembered-status')).toHaveText('この端末：一覧にありません');
       await otherBrowser.getByRole('button', { name: 'ホームに戻る' }).click();
       await otherBrowser.getByRole('button', { name: 'MFA 設定', exact: true }).click();
       await otherBrowser.getByRole('button', { name: 'TOTP を無効にする' }).click();

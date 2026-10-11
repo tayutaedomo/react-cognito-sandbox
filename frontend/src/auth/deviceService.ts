@@ -1,15 +1,21 @@
 export interface DeviceRecord {
   id: string;
   name?: string;
+  createdDate?: Date;
+  modifiedDate?: Date;
+  raw?: unknown;
   lastAuthenticatedDate?: Date;
   attributes?: Record<string, string>;
 }
+
+export type DeviceTrustStatus = 'remembered' | 'not_remembered' | 'unknown';
+export type CurrentDeviceStatus = DeviceTrustStatus | 'not_listed' | 'unavailable';
 
 export interface DeviceSnapshot {
   totpEnabled: boolean;
   devices: DeviceRecord[];
   currentDeviceKey?: string;
-  currentDeviceRemembered: boolean;
+  currentDeviceStatus: CurrentDeviceStatus;
   accessTokenExpiresAt?: Date;
   idTokenExpiresAt?: Date;
 }
@@ -59,6 +65,18 @@ function tokenExpiration(payload?: Record<string, unknown>): Date | undefined {
   return typeof exp === 'number' ? new Date(exp * 1000) : undefined;
 }
 
+export function deviceTrustStatus(device: DeviceRecord): DeviceTrustStatus {
+  // device_status = valid や一覧への存在だけでは、記憶済み状態を判定しない。
+  const status = device.attributes?.['dev:device_remembered_status'];
+  return status === 'remembered' || status === 'not_remembered' ? status : 'unknown';
+}
+
+function currentDeviceStatus(key: string | undefined, devices: DeviceRecord[]): CurrentDeviceStatus {
+  if (!key) return 'unavailable';
+  const device = devices.find(candidate => candidate.id === key);
+  return device ? deviceTrustStatus(device) : 'not_listed';
+}
+
 export function createDeviceService(api: DeviceApi): DeviceAuthService {
   return {
     async signIn(username: string, password: string): Promise<DeviceSignInStep> {
@@ -83,7 +101,7 @@ export function createDeviceService(api: DeviceApi): DeviceAuthService {
         totpEnabled: preference.enabled?.includes('TOTP') ?? false,
         devices,
         currentDeviceKey,
-        currentDeviceRemembered: Boolean(currentDeviceKey && devices.some(device => device.id === currentDeviceKey)),
+        currentDeviceStatus: currentDeviceStatus(currentDeviceKey, devices),
         accessTokenExpiresAt: tokenExpiration(accessPayload),
         idTokenExpiresAt: tokenExpiration(idPayload),
       };

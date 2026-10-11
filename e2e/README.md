@@ -21,6 +21,7 @@
   - [登録済み TOTP でサインインを確認する](#登録済み-totp-でサインインを確認する)
   - [任意 TOTP の登録・無効化・再有効化を確認する](#任意-totp-の登録無効化再有効化を確認する)
   - [信頼するデバイスの記憶と解除を確認する](#信頼するデバイスの記憶と解除を確認する)
+  - [ログイン後のデバイス一覧を確認する](#ログイン後のデバイス一覧を確認する)
   - [TOTP の再登録・紛失からの復旧を確認する](#totp-の再登録紛失からの復旧を確認する)
   - [TOTP コード生成と復旧ヘルパーを単体テストする](#totp-コード生成と復旧ヘルパーを単体テストする)
 - [結果と画面キャプチャ](#結果と画面キャプチャ)
@@ -91,9 +92,10 @@ flowchart TB
         G["API Gateway<br/>JWT 検証"]
         L["Lambda / FastAPI"]
         G <-->|Users API| L
-        L <-->|IAM 権限で ListUsers| C
+        L <-->|IAM 権限で ListUsers / AdminListDevices| C
     end
-    A <-->|リダイレクト認証・設定 API| C
+    A <-->|リダイレクト認証・TOTP 設定 API| C
+    A <-->|本人のデバイス一覧・ID トークン| G
     R <-->|Users API・ID トークン| G
     style B fill:#f3f3f3,stroke:#888,stroke-dasharray:5 5
 ```
@@ -174,6 +176,7 @@ cp e2e/.env.e2e.example e2e/.env.e2e
 | [登録済み TOTP でサインインを確認する](#登録済み-totp-でサインインを確認する) | 上記に加えて登録済み TOTP のシークレット | `test:e2e:real` | 同じスイートで名前・電話番号も更新。TOTP 登録は変更しない |
 | [任意 TOTP の登録・無効化・再有効化を確認する](#任意-totp-の登録無効化再有効化を確認する) | OPTIONAL のプール・専用ユーザー | `test:e2e:mfa-optional` | TOTP 登録・有効設定。正常終了時は無効に戻す |
 | [信頼するデバイスの記憶と解除を確認する](#信頼するデバイスの記憶と解除を確認する) | device tracking と MFA 未登録または無効の専用ユーザー | `test:e2e:mfa-device` | TOTP 登録と無効化、デバイス記憶・解除 |
+| [ログイン後のデバイス一覧を確認する](#ログイン後のデバイス一覧を確認する) | device tracking と通常のテストユーザー。MFA 有効なら TOTP シークレットも必要 | `test:e2e:device-list` | 新しいテストブラウザの信頼登録と解除。TOTP 設定は変更しない |
 | [TOTP の再登録・紛失からの復旧を確認する](#totp-の再登録紛失からの復旧を確認する) | OPTIONAL のプール・復旧専用ユーザー・AWS CLI と管理者権限 | `test:e2e:mfa-recovery` | TOTP 登録・有効設定・全 Cognito セッション。終了処理で無効化・失効 |
 | [TOTP コード生成と復旧ヘルパーを単体テストする](#totp-コード生成と復旧ヘルパーを単体テストする) | Node パッケージの依存関係のみ | `test:unit` | なし。ブラウザも起動しない |
 
@@ -196,7 +199,7 @@ AWS 上のインフラ、`frontend/.env` の接続設定、通常のテストユ
 CI=1 npm --prefix e2e run test:e2e:real
 ```
 
-サインイン、認証後の API 呼び出し、パスワードリセット画面への遷移、プロフィール編集を検証します。
+サインイン、認証後の API 呼び出し、パスワードリセット画面への遷移、プロフィール編集、Hosted UI ログイン後のデバイス一覧の読み取りを検証します。
 プロフィール編集は専用ユーザーの名前・電話番号を更新します。任意 MFA の設定変更シナリオは、このコマンドではスキップします。
 一覧だけ確認する場合は `npm --prefix e2e run test:e2e:real -- --list` を実行します。
 
@@ -232,6 +235,16 @@ CI=1 npm --prefix e2e run test:e2e:mfa-device
 
 テスト内で TOTP 登録を行い、新端末の TOTP、信頼後の同一ブラウザでの省略、別ブラウザでの TOTP、信頼解除後の再要求を確認します。正常終了時は TOTP を無効に戻します。手順と制約は [POC 008](../docs/poc/008-trusted-device.md) を参照してください。
 
+### ログイン後のデバイス一覧を確認する
+
+`TEST_USER_EMAIL` と `TEST_USER_PASSWORD` を設定し、MFA 有効の場合は `TEST_USER_TOTP_SECRET` も用意します。
+
+```bash
+CI=1 npm --prefix e2e run test:e2e:device-list
+```
+
+Hosted UI と SRP の両経路で、ログイン後とページ再読み込み後の一覧表示を確認します。SRP の新しいテストブラウザだけを信頼登録し、終了時に登録解除します。中断・失敗時は登録が残る場合があります。通常の実環境テストでは、SRP の登録・解除を含むシナリオはスキップします。
+
 ### TOTP の再登録・紛失からの復旧を確認する
 
 OPTIONAL の環境と、`mfa-recovery-…@example.com` の専用ユーザーを使用します。
@@ -266,6 +279,8 @@ npm --prefix e2e run test:unit
 | `e2e/playwright-report/` | HTML レポート |
 
 いずれも Git 管理外です。モックのシナリオ一覧は `npm --prefix e2e run test:e2e -- --list` で確認できます。
+
+GitHub Actions では、モック E2E のキャプチャ・HTML レポートと失敗時のトレースを artifact として14日間保存します。取得方法は [CI の artifact](../docs/ci.md#モック-e2e-の-artifact) を参照してください。
 
 ### モック画面と実環境の記録範囲
 
