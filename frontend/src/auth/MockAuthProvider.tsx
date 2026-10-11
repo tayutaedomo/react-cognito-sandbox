@@ -12,12 +12,32 @@ interface Props {
 export function MockAuthProvider({ children }: Props) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [getModel] = useState(() => {
+    const model = {
+      registered: false,
+      enabled: false,
+      emailEnabled: false,
+      preferred: undefined as string | undefined,
+      emailVerified: true,
+      challenge: 'TOTP' as string,
+      remembered: false,
+      signedIn: false,
+    };
+    return {
+      get: () => model,
+      signOut: () => {
+        model.signedIn = false;
+      },
+    };
+  });
+  const model = getModel.get();
   const [mfa] = useState(() => {
-    let registered = false;
-    let enabled = false;
     return createMfaService({
       async fetchMFAPreference() {
-        return { enabled: enabled ? ['TOTP'] : [], preferred: enabled ? 'TOTP' : undefined };
+        return {
+          enabled: [...(model.enabled ? ['TOTP'] : []), ...(model.emailEnabled ? ['EMAIL'] : [])],
+          preferred: model.preferred,
+        };
       },
       async setUpTOTP() {
         return {
@@ -27,27 +47,45 @@ export function MockAuthProvider({ children }: Props) {
       },
       async verifyTOTPSetup({ code }) {
         if (code !== '123456') throw Object.assign(new Error('Mock mismatch'), { name: 'CodeMismatchException' });
-        registered = true;
+        model.registered = true;
       },
-      async updateMFAPreference({ totp }) {
-        if (totp === 'PREFERRED' && !registered)
-          throw Object.assign(new Error('Mock unregistered'), {
-            name: 'EnableSoftwareTokenMFAException',
-          });
-        enabled = totp === 'PREFERRED';
+      async updateMFAPreference(input) {
+        if (input.totp && input.totp !== 'DISABLED' && !model.registered) {
+          throw Object.assign(new Error('Mock unregistered'), { name: 'EnableSoftwareTokenMFAException' });
+        }
+        for (const [key, method] of [
+          ['totp', 'TOTP'],
+          ['email', 'EMAIL'],
+        ] as const) {
+          const value = input[key];
+          if (!value) continue;
+          if (key === 'totp') model.enabled = value !== 'DISABLED';
+          else model.emailEnabled = value !== 'DISABLED';
+          if (value === 'PREFERRED') model.preferred = method;
+          else if (model.preferred === method && (value === 'NOT_PREFERRED' || value === 'DISABLED'))
+            model.preferred = undefined;
+        }
+      },
+      async fetchUserAttributes() {
+        return { email: 'mock@example.com', email_verified: String(model.emailVerified) };
+      },
+      async sendUserAttributeVerificationCode() {},
+      async confirmUserAttribute({ confirmationCode }) {
+        if (confirmationCode !== '123456')
+          throw Object.assign(new Error('Mock mismatch'), { name: 'CodeMismatchException' });
+        model.emailVerified = true;
       },
     });
   });
   const [mockAttributes, setMockAttributes] = useState<Record<string, string>>({
     email: 'mock@example.com',
+    email_verified: 'true',
     name: 'Mock User',
     phone_number: '+819012345678',
   });
   const [deviceAuth] = useState(() => {
-    let remembered = false;
-    let signedIn = false;
     const mockSession = () => ({
-      tokens: signedIn
+      tokens: model.signedIn
         ? {
             accessToken: {
               payload: { device_key: 'mock-device', exp: Math.floor(Date.now() / 1000) + 3600 },
@@ -58,19 +96,50 @@ export function MockAuthProvider({ children }: Props) {
     });
     return createDeviceService({
       async signIn() {
-        return { isSignedIn: false, nextStep: { signInStep: 'CONFIRM_SIGN_IN_WITH_TOTP_CODE' } };
+        if (model.remembered || (!model.enabled && !model.emailEnabled)) {
+          model.signedIn = true;
+          return { isSignedIn: true, nextStep: { signInStep: 'DONE' } };
+        }
+        if (model.enabled && model.emailEnabled && !model.preferred) {
+          model.challenge = 'selection';
+          return {
+            isSignedIn: false,
+            nextStep: { signInStep: 'CONTINUE_SIGN_IN_WITH_MFA_SELECTION', allowedMFATypes: ['TOTP', 'EMAIL'] },
+          };
+        }
+        model.challenge = model.preferred ?? (model.emailEnabled ? 'EMAIL' : 'TOTP');
+        return {
+          isSignedIn: false,
+          nextStep: {
+            signInStep:
+              model.challenge === 'EMAIL' ? 'CONFIRM_SIGN_IN_WITH_EMAIL_CODE' : 'CONFIRM_SIGN_IN_WITH_TOTP_CODE',
+            codeDeliveryDetails: { destination: 'm***@e***' },
+          },
+        };
       },
       async confirmSignIn({ challengeResponse }) {
+        if (model.challenge === 'selection') {
+          if (!['TOTP', 'EMAIL'].includes(challengeResponse)) throw new Error('Unavailable method');
+          model.challenge = challengeResponse;
+          return {
+            isSignedIn: false,
+            nextStep: {
+              signInStep:
+                challengeResponse === 'EMAIL' ? 'CONFIRM_SIGN_IN_WITH_EMAIL_CODE' : 'CONFIRM_SIGN_IN_WITH_TOTP_CODE',
+              codeDeliveryDetails: { destination: 'm***@e***' },
+            },
+          };
+        }
         if (challengeResponse !== '123456')
           throw Object.assign(new Error('Mismatch'), { name: 'NotAuthorizedException' });
-        signedIn = true;
+        model.signedIn = true;
         return { isSignedIn: true, nextStep: { signInStep: 'DONE' } };
       },
       async fetchMFAPreference() {
-        return { enabled: ['TOTP'] };
+        return { enabled: [...(model.enabled ? ['TOTP'] : []), ...(model.emailEnabled ? ['EMAIL'] : [])] };
       },
       async fetchDevices() {
-        return remembered
+        return model.remembered
           ? [
               {
                 id: 'mock-device',
@@ -87,10 +156,10 @@ export function MockAuthProvider({ children }: Props) {
         return mockSession();
       },
       async rememberDevice() {
-        remembered = true;
+        model.remembered = true;
       },
       async forgetDevice() {
-        remembered = false;
+        model.remembered = false;
       },
     });
   });
@@ -117,6 +186,7 @@ export function MockAuthProvider({ children }: Props) {
   };
 
   const signOut = () => {
+    getModel.signOut();
     setUser(null);
   };
 

@@ -10,6 +10,9 @@ import RegisteredDevices from './RegisteredDevices';
 
 export default function MfaSettings({ onBack }: { onBack: () => void }) {
   const { mfa } = useAuth();
+  const [email, setEmail] = useState<{ address?: string; verified: boolean } | null>(null);
+  const [emailCode, setEmailCode] = useState('');
+  const [emailVerificationSent, setEmailVerificationSent] = useState(false);
   const [preference, setPreference] = useState<MfaPreference | null>(null);
   const [setup, setSetup] = useState<(TotpSetup & { qr: string }) | null>(null);
   const [verified, setVerified] = useState(false);
@@ -20,10 +23,12 @@ export default function MfaSettings({ onBack }: { onBack: () => void }) {
 
   useEffect(() => {
     let active = true;
-    mfa
-      .getPreference()
+    Promise.all([mfa.getPreference(), mfa.getEmail()])
       .then((value) => {
-        if (active) setPreference(value);
+        if (active) {
+          setPreference(value[0]);
+          setEmail(value[1]);
+        }
       })
       .catch((cause) => {
         if (active) setError(mfaErrorMessage(cause));
@@ -53,6 +58,7 @@ export default function MfaSettings({ onBack }: { onBack: () => void }) {
     run(async () => {
       setPreference(null);
       setPreference(await mfa.getPreference());
+      setEmail(await mfa.getEmail());
     });
 
   const startSetup = () =>
@@ -78,6 +84,22 @@ export default function MfaSettings({ onBack }: { onBack: () => void }) {
       );
     });
 
+  const changeEmail = (enabled: boolean) =>
+    run(async () => {
+      await mfa.setEmailEnabled(enabled);
+      setPreference(null);
+      setPreference(await mfa.getPreference());
+      setMessage(enabled ? 'メール MFA を有効にしました。' : 'メール MFA を無効にしました。');
+    });
+
+  const changePreferred = (value: string) =>
+    run(async () => {
+      await mfa.setPreferred(value === 'choose' ? null : (value as 'TOTP' | 'EMAIL'));
+      setPreference(null);
+      setPreference(await mfa.getPreference());
+      setMessage('ログイン時の方式を保存しました。');
+    });
+
   function verify(event: FormEvent) {
     event.preventDefault();
     void run(async () => {
@@ -101,25 +123,26 @@ export default function MfaSettings({ onBack }: { onBack: () => void }) {
           ホームに戻る
         </button>
         <h2>MFA 設定</h2>
-        <p>認証アプリを使うと、パスワードに加えて6桁のコードでログインできます。</p>
+        <p>認証アプリまたはメールで、パスワードに加えて6桁のコードを確認します。</p>
       </header>
+      {error && (
+        <p className="feedback feedback--error" role="alert">
+          {error}
+        </p>
+      )}
+      {message && (
+        <p className="feedback feedback--success" role="status">
+          {message}
+        </p>
+      )}
+      {busy && (
+        <p className="feedback feedback--busy" role="status">
+          処理中...
+        </p>
+      )}
+
       <section className="panel">
         <h3>TOTP 設定</h3>
-        {error && (
-          <p className="feedback feedback--error" role="alert">
-            {error}
-          </p>
-        )}
-        {message && (
-          <p className="feedback feedback--success" role="status">
-            {message}
-          </p>
-        )}
-        {busy && (
-          <p className="feedback feedback--busy" role="status">
-            処理中...
-          </p>
-        )}
         {preference && (
           <p
             className={`status-line ${preference.enabled ? 'status-line--enabled' : 'status-line--disabled'}`}
@@ -225,7 +248,6 @@ export default function MfaSettings({ onBack }: { onBack: () => void }) {
             </button>
           </section>
         )}
-        {preference && <MaskedData label="MFA 設定の API 応答" value={preference.raw} />}
         <div className="page-note">
           {!setup && !verified && preference && !preference.enabled && (
             <p className="help-text">
@@ -237,6 +259,122 @@ export default function MfaSettings({ onBack }: { onBack: () => void }) {
             Cognito に登録済みの TOTP シークレットは取得できません。デバイスの信頼状態は下のグループで確認してください。
           </p>
         </div>
+      </section>
+      <section className="panel">
+        <h3>メール MFA</h3>
+        {!mfa.emailAvailable && <p>この環境ではメール MFA は利用できません。SES の設定後に有効になります。</p>}
+        <p>
+          送信先：{email?.address ?? '取得できません'}（{email?.verified ? '確認済み' : '未確認'}）
+        </p>
+        {preference && (
+          <p className="status-line" data-testid="email-mfa-status">
+            メール：{preference.emailEnabled ? '有効' : '無効'}
+            {preference.preferredMethod === 'EMAIL' ? '（優先方式）' : ''}
+          </p>
+        )}
+        <div className="action-row">
+          {preference && (
+            <button
+              disabled={
+                busy || !!setup || verified || (!preference.emailEnabled && (!email?.verified || !mfa.emailAvailable))
+              }
+              onClick={() => {
+                void changeEmail(!preference.emailEnabled);
+              }}
+            >
+              {preference.emailEnabled ? 'メール MFA を無効にする' : 'メール MFA を有効にする'}
+            </button>
+          )}
+          {email?.address && !email.verified && (
+            <button
+              disabled={busy}
+              onClick={() => {
+                void run(async () => {
+                  await mfa.sendEmailVerification();
+                  setEmailVerificationSent(true);
+                  setMessage('メールアドレスの確認コードを送信しました。');
+                });
+              }}
+            >
+              メールアドレスの確認コードを送信
+            </button>
+          )}
+        </div>
+        {emailVerificationSent && !email?.verified && (
+          <form
+            className="form-stack"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void run(async () => {
+                await mfa.verifyEmail(emailCode);
+                setEmailCode('');
+                setEmail(await mfa.getEmail());
+                setMessage('メールアドレスを確認しました。');
+              });
+            }}
+          >
+            <label htmlFor="email-verify-code">メールアドレスの確認コード</label>
+            <input
+              id="email-verify-code"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              pattern="[0-9]{6}"
+              maxLength={6}
+              required
+              value={emailCode}
+              onChange={(event) => setEmailCode(event.target.value)}
+              disabled={busy}
+            />
+            <button disabled={busy}>メールアドレスを確認する</button>
+          </form>
+        )}
+        <div className="page-note">
+          <p>
+            メール MFA は受信先へのコード配送を使います。サンドボックスでは SES
+            で確認したアドレスだけに送信できます。送信先は Cognito の email
+            属性です。この画面では送信先の変更は行いません。
+          </p>
+        </div>
+      </section>
+      <section className="panel">
+        <h3>ログイン時の方式</h3>
+        {preference && (
+          <div className="form-field">
+            <label htmlFor="mfa-preferred">優先方式</label>
+            <select
+              id="mfa-preferred"
+              disabled={busy || !!setup || verified || (!preference.enabled && !preference.emailEnabled)}
+              value={
+                preference.preferredMethod ??
+                (preference.enabled && !preference.emailEnabled
+                  ? 'TOTP'
+                  : !preference.enabled && preference.emailEnabled
+                    ? 'EMAIL'
+                    : 'choose')
+              }
+              onChange={(event) => {
+                void changePreferred(event.target.value);
+              }}
+            >
+              {preference.enabled && <option value="TOTP">認証アプリを優先</option>}
+              {preference.emailEnabled && <option value="EMAIL">メールを優先</option>}
+              {preference.enabled && preference.emailEnabled && <option value="choose">ログイン時に選択</option>}
+              {!preference.enabled && !preference.emailEnabled && <option value="choose">MFA は無効</option>}
+            </select>
+          </div>
+        )}
+        <div className="page-note">
+          <p>
+            2方式を有効にすると「ログイン時に選択」が使えます。1方式のみの場合はその方式を使います。変更は新しいログインで確認してください。
+          </p>
+          <p>信頼済みデバイスの SRP ログインでは MFA 自体が省略されます。方式の変更はデバイスの信頼を解除しません。</p>
+          <p>
+            今回のメール MFA POC
+            の環境では、パスワードを忘れた場合は管理者による復旧を使います。プール全体が管理者復旧設定の場合、TOTP
+            ユーザーも自己復旧できません。
+          </p>
+        </div>
+        {preference && <MaskedData label="MFA 方式の API 応答" value={preference.raw} />}
       </section>
       <RegisteredDevices />
       <BrowserStorage />

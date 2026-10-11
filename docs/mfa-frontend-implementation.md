@@ -13,6 +13,12 @@ MFA 実装は、①起動時の接続先選択、②共通の MFA 処理、③�
 
 ## 全体像
 
+メール MFA は同じサービスに `getEmail`・`setEmailEnabled`・`setPreferred` を追加しています。TOTP とメールの有効状態を独立して持ち、優先なしでは両方式の `NOT_PREFERRED` を保存します。1方式だけになると残った方式を優先にします。
+
+SRP の `deviceService` は Cognito の次ステップを「完了・TOTP コード・メールコード・方式選択」へ変換します。方式と伏せ字の配送先を画面へ返し、方式選択もコード入力も Amplify の `confirmSignIn` に渡します。モックは同じサービスにブラウザ内の状態を共有する API を渡し、実メールを送りません。
+
+[MFA と復旧の設定構造](./mfa-and-recovery.md) と [メール MFA POC](./poc/010-email-mfa-sandbox.md) を参照してください。
+
 | 実行するもの | MFA 設定画面 | 共通の MFA 処理 | その先の呼び出し |
 | --- | --- | --- | --- |
 | 実 Cognito のアプリ・実環境 E2E | 使用する | 使用する | Amplify → Cognito |

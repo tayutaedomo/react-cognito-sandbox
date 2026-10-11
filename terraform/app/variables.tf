@@ -47,3 +47,36 @@ variable "device_tracking_enabled" {
   type        = bool
   default     = false
 }
+
+variable "email_mfa_enabled" {
+  description = "Enable email MFA with an owned SES identity"
+  type        = bool
+  default     = false
+}
+
+variable "ses_email_identity_arn" {
+  description = "Verified SES sender identity ARN in ap-northeast-1"
+  type        = string
+  default     = null
+  sensitive   = true
+}
+
+variable "user_pool_tier" {
+  description = "Cognito feature plan; email MFA requires ESSENTIALS or PLUS"
+  type        = string
+  default     = null
+  validation {
+    condition     = var.user_pool_tier == null ? true : contains(["LITE", "ESSENTIALS", "PLUS"], var.user_pool_tier)
+    error_message = "Choose LITE, ESSENTIALS, or PLUS."
+  }
+}
+
+variable "account_recovery_mode" {
+  description = "Password recovery policy: verified_email or admin_only"
+  type        = string
+  default     = "verified_email"
+  validation {
+    condition     = contains(["verified_email", "admin_only"], var.account_recovery_mode)
+    error_message = "Choose verified_email or admin_only."
+  }
+}

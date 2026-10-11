@@ -37,7 +37,7 @@ jobs:
       - name: Lint（自動修正なし）
         run: |
           npm --prefix frontend run lint -- --deny-warnings
-          frontend/node_modules/.bin/oxlint --deny-warnings e2e terraform/tests
+          frontend/node_modules/.bin/oxlint --deny-warnings e2e terraform/tests scripts
       - name: JavaScript・TypeScript 整形チェック（自動修正なし）
         run: npm --prefix frontend run format:check
       - name: 単体テスト

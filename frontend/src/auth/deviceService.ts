@@ -1,3 +1,4 @@
+import type { MfaMethod } from './mfaService';
 export interface DeviceRecord {
   id: string;
   name?: string;
@@ -13,6 +14,7 @@ export type CurrentDeviceStatus = DeviceTrustStatus | 'not_listed' | 'unavailabl
 
 export interface DeviceSnapshot {
   totpEnabled: boolean;
+  emailEnabled: boolean;
   devices: DeviceRecord[];
   currentDeviceKey?: string;
   currentDeviceStatus: CurrentDeviceStatus;
@@ -23,6 +25,8 @@ export interface DeviceSnapshot {
 export interface DeviceAuthService {
   signIn(username: string, password: string): Promise<DeviceSignInStep>;
   confirmTotp(code: string): Promise<DeviceSignInStep>;
+  confirmCode(code: string): Promise<DeviceSignInStep>;
+  selectMfa(method: MfaMethod): Promise<DeviceSignInStep>;
   snapshot(): Promise<DeviceSnapshot>;
   rememberCurrentDevice(): Promise<void>;
   forgetCurrentDevice(): Promise<void>;
@@ -30,7 +34,7 @@ export interface DeviceAuthService {
 
 interface SignInResult {
   isSignedIn: boolean;
-  nextStep: { signInStep: string };
+  nextStep: { signInStep: string; allowedMFATypes?: string[]; codeDeliveryDetails?: { destination?: string } };
 }
 
 interface DeviceApi {
@@ -52,12 +56,25 @@ interface DeviceApi {
   forgetDevice: () => Promise<void>;
 }
 
-export type DeviceSignInStep = 'signedIn' | 'totp';
+export type DeviceSignInStep =
+  | 'signedIn'
+  | 'totp'
+  | { kind: 'email'; destination?: string }
+  | { kind: 'selection'; methods: MfaMethod[] };
 
 function mapSignInResult(result: SignInResult): DeviceSignInStep {
   if (result.isSignedIn) return 'signedIn';
   if (result.nextStep.signInStep === 'CONFIRM_SIGN_IN_WITH_TOTP_CODE') return 'totp';
-  throw Object.assign(new Error('Unsupported device POC sign-in step'), {
+  if (result.nextStep.signInStep === 'CONFIRM_SIGN_IN_WITH_EMAIL_CODE') {
+    return { kind: 'email', destination: result.nextStep.codeDeliveryDetails?.destination };
+  }
+  if (result.nextStep.signInStep === 'CONTINUE_SIGN_IN_WITH_MFA_SELECTION') {
+    const methods = (result.nextStep.allowedMFATypes ?? []).filter(
+      (value): value is MfaMethod => value === 'TOTP' || value === 'EMAIL',
+    );
+    if (methods.length) return { kind: 'selection', methods };
+  }
+  throw Object.assign(new Error('Unsupported sign-in step'), {
     name: 'UnsupportedDeviceSignInStep',
   });
 }
@@ -80,20 +97,32 @@ function currentDeviceStatus(key: string | undefined, devices: DeviceRecord[]): 
 }
 
 export function createDeviceService(api: DeviceApi): DeviceAuthService {
+  let allowedMethods: MfaMethod[] = [];
+  function map(result: SignInResult) {
+    const step = mapSignInResult(result);
+    allowedMethods = typeof step === 'object' && step.kind === 'selection' ? step.methods : [];
+    return step;
+  }
+  async function confirmCode(code: string) {
+    if (!/^[0-9]{6}$/.test(code)) throw Object.assign(new Error('Invalid code'), { name: 'InvalidTotpCode' });
+    return map(await api.confirmSignIn({ challengeResponse: code }));
+  }
   return {
     async signIn(username: string, password: string): Promise<DeviceSignInStep> {
+      allowedMethods = [];
       const result = await api.signIn({
         username,
         password,
         options: { authFlowType: 'USER_SRP_AUTH' },
       });
-      return mapSignInResult(result);
+      return map(result);
     },
-    async confirmTotp(code: string): Promise<DeviceSignInStep> {
-      if (!/^[0-9]{6}$/.test(code)) {
-        throw Object.assign(new Error('Invalid TOTP code'), { name: 'InvalidTotpCode' });
-      }
-      return mapSignInResult(await api.confirmSignIn({ challengeResponse: code }));
+    confirmTotp: confirmCode,
+    confirmCode,
+    async selectMfa(method) {
+      if (!allowedMethods.includes(method))
+        throw Object.assign(new Error('Unavailable MFA'), { name: 'InvalidMfaSelection' });
+      return map(await api.confirmSignIn({ challengeResponse: method }));
     },
     async snapshot(): Promise<DeviceSnapshot> {
       const [preference, devices, session] = await Promise.all([
@@ -107,6 +136,7 @@ export function createDeviceService(api: DeviceApi): DeviceAuthService {
       const currentDeviceKey = typeof key === 'string' ? key : undefined;
       return {
         totpEnabled: preference.enabled?.includes('TOTP') ?? false,
+        emailEnabled: preference.enabled?.includes('EMAIL') ?? false,
         devices,
         currentDeviceKey,
         currentDeviceStatus: currentDeviceStatus(currentDeviceKey, devices),
@@ -123,12 +153,22 @@ export function createDeviceService(api: DeviceApi): DeviceAuthService {
   };
 }
 
+export function isExpiredSignInSession(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const name = 'name' in error ? error.name : undefined;
+  const message = 'message' in error && typeof error.message === 'string' ? error.message : '';
+  return name === 'ExpiredCodeException' || (name === 'NotAuthorizedException' && /session/i.test(message));
+}
+
 export function deviceErrorMessage(error: unknown): string {
   const name = error && typeof error === 'object' && 'name' in error ? error.name : undefined;
   if (name === 'InvalidTotpCode') return '半角数字6桁のコードを入力してください。';
   if (name === 'NotAuthorizedException' || name === 'UserNotFoundException')
     return 'メールアドレス、パスワード、または認証コードを確認してください。';
+  if (name === 'CodeMismatchException') return 'コードが一致しません。入力したコードを確認してください。';
+  if (name === 'ExpiredCodeException') return 'コードの期限が切れました。ログインからやり直してください。';
+  if (name === 'InvalidMfaSelection') return '表示されている MFA 方式から選択してください。';
   if (name === 'UnsupportedDeviceSignInStep')
-    return 'この POC が扱わない認証ステップです。TOTP が有効な専用ユーザーでお試しください。';
+    return 'この画面が扱わない認証ステップです。TOTP またはメール MFA の設定を確認してください。';
   return '端末認証を完了できませんでした。設定とサインイン状態を確認してください。';
 }

@@ -53,14 +53,15 @@ terraform apply
 ## MFA POC
 
 `app/variables.tf` の `mfa_configuration` は `OFF`（既定）・`OPTIONAL`・`ON`、`totp_enabled` は既定 `false` です。
-今回の因子は TOTP のみで、`OPTIONAL` / `ON` では `totp_enabled = true` が必要です。
+`OPTIONAL` / `ON` では TOTP またはメールの因子が必要です。メールには SES Identity、Essentials 以上と、この POC では `admin_only` 復旧が必要です。
 `OFF` は新規の TOTP 登録を設定せず、ユーザーの登録済み TOTP を削除しません。
 無効化・再有効化は初回登録状態のリセットにはなりません。因子だけの無効化と MFA 方針の OFF も異なります。
 繰り返し切り替える場合の制約は [MFA POC 手順](../docs/poc/005-mfa-foundation.md#無効化再有効化を繰り返す場合の制約) に記載しています。
 任意 MFA の登録・設定画面は [POC 006](../docs/poc/006-optional-mfa.md) を参照してください。
+メール MFA の所有確認・配送確認・適用手順は [POC 010](../docs/poc/010-email-mfa-sandbox.md) を参照してください。
 任意 POC には `examples/mfa-optional.tfvars.example` を使用します。
 
-`app/terraform.tfvars.example` は環境全体の設定テンプレート、`app/examples/mfa-*.tfvars.example` は MFA の2項目だけを切り替える設定例です。
+`app/terraform.tfvars.example` は環境全体の設定テンプレート、`app/examples/mfa-*.tfvars.example` は MFA・配送・デバイス・復旧方針を切り替える設定例です。
 環境固有の URL やプロジェクト名を複製せず、同じ環境で必須・任意を試すために分けています。
 Terraform がこの分割を要求するわけではなく、MFA の値を `terraform.tfvars` に直接設定しても構いません。
 `.example` は説明用の命名で自動読込されません。複数の `-var-file` では後に指定した値を優先します。

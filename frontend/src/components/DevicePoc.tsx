@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { useAuth } from '../auth/AuthContext';
-import { deviceErrorMessage } from '../auth/deviceService';
-import type { DeviceSnapshot } from '../auth/deviceService';
+import { deviceErrorMessage, isExpiredSignInSession } from '../auth/deviceService';
+import type { MfaMethod } from '../auth/mfaService';
+import type { DeviceSignInStep, DeviceSnapshot } from '../auth/deviceService';
 
 function formatDate(value?: Date) {
   return value ? value.toLocaleString('ja-JP') : '取得できません';
@@ -21,7 +22,9 @@ export default function DevicePoc({ onBack }: { onBack: () => void }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [code, setCode] = useState('');
-  const [step, setStep] = useState<'credentials' | 'totp' | 'devices'>('credentials');
+  const [step, setStep] = useState<'credentials' | 'totp' | 'email' | 'selection' | 'devices'>('credentials');
+  const [destination, setDestination] = useState<string | undefined>();
+  const [methods, setMethods] = useState<MfaMethod[]>([]);
   const [snapshot, setSnapshot] = useState<DeviceSnapshot | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -40,35 +43,51 @@ export default function DevicePoc({ onBack }: { onBack: () => void }) {
       await operation();
     } catch (cause) {
       setError(deviceErrorMessage(cause));
+      if (isExpiredSignInSession(cause)) {
+        setStep('credentials');
+        setPassword('');
+        setCode('');
+        setMethods([]);
+        setDestination(undefined);
+        setError('認証セッションが終了しました。ログインからやり直してください。');
+      }
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function advance(result: DeviceSignInStep) {
+    setCode('');
+    if (result === 'signedIn') {
+      setPassword('');
+      await refreshUser();
+      setStep('devices');
+      await loadSnapshot();
+    } else if (result === 'totp') {
+      setPassword('');
+      setStep('totp');
+    } else if (result.kind === 'email') {
+      setPassword('');
+      setDestination(result.destination);
+      setStep('email');
+    } else {
+      setPassword('');
+      setMethods(result.methods);
+      setStep('selection');
     }
   }
 
   function submitCredentials(event: FormEvent) {
     event.preventDefault();
     void run(async () => {
-      const result = await deviceAuth.signIn(email, password);
-      if (result === 'totp') setStep('totp');
-      else {
-        setPassword('');
-        await refreshUser();
-        setStep('devices');
-        await loadSnapshot();
-      }
+      await advance(await deviceAuth.signIn(email, password));
     });
   }
 
   function submitCode(event: FormEvent) {
     event.preventDefault();
     void run(async () => {
-      const result = await deviceAuth.confirmTotp(code);
-      if (result === 'totp') throw new Error('Repeated TOTP challenge');
-      await refreshUser();
-      setPassword('');
-      setCode('');
-      setStep('devices');
-      await loadSnapshot();
+      await advance(await deviceAuth.confirmCode(code));
     });
   }
 
@@ -153,11 +172,35 @@ export default function DevicePoc({ onBack }: { onBack: () => void }) {
             </div>
           </form>
         )}
-        {step === 'totp' && (
+        {step === 'selection' && (
+          <section>
+            <h3>MFA 方式を選択</h3>
+            <p>今回のログインに使う方式を選んでください。</p>
+            <div className="action-row">
+              {methods.map((method) => (
+                <button
+                  key={method}
+                  disabled={busy}
+                  onClick={() => {
+                    void run(async () => {
+                      await advance(await deviceAuth.selectMfa(method));
+                    });
+                  }}
+                >
+                  {method === 'TOTP' ? '認証アプリで確認' : 'メールで確認'}
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
+        {(step === 'totp' || step === 'email') && (
           <form className="form-stack" onSubmit={submitCode}>
-            <h3>TOTP を入力</h3>
+            <h3>{step === 'totp' ? 'TOTP を入力' : 'メールのコードを入力'}</h3>
+            {step === 'email' && (
+              <p>送信先：{destination ?? 'Cognito に登録したメールアドレス'}。届いたコードを入力してください。</p>
+            )}
             <div className="form-field form-field--compact">
-              <label htmlFor="device-totp">認証アプリの6桁コード</label>
+              <label htmlFor="device-totp">{step === 'totp' ? '認証アプリの6桁コード' : 'メールの6桁コード'}</label>
               <input
                 id="device-totp"
                 inputMode="numeric"
@@ -177,6 +220,21 @@ export default function DevicePoc({ onBack }: { onBack: () => void }) {
             </div>
           </form>
         )}
+        {(step === 'totp' || step === 'email' || step === 'selection') && (
+          <button
+            disabled={busy}
+            onClick={() => {
+              setStep('credentials');
+              setDestination(undefined);
+              setMethods([]);
+              setCode('');
+              setPassword('');
+              setError('');
+            }}
+          >
+            ログインからやり直す
+          </button>
+        )}
         {step === 'devices' && snapshot && (
           <section>
             <h3>現在の認証状態</h3>
@@ -184,6 +242,7 @@ export default function DevicePoc({ onBack }: { onBack: () => void }) {
               <p className="metric" data-testid="device-totp-status">
                 TOTP：{snapshot.totpEnabled ? '有効' : '無効'}
               </p>
+              <p className="metric">メール MFA：{snapshot.emailEnabled ? '有効' : '無効'}</p>
               <p
                 className={`metric${snapshot.currentDeviceStatus === 'remembered' ? ' metric--positive' : ''}`}
                 data-testid="device-remembered-status"

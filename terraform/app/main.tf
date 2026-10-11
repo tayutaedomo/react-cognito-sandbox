@@ -42,12 +42,29 @@ resource "aws_cognito_user_pool" "main" {
   name = "react-cognito-sandbox-pool"
 
   mfa_configuration = var.mfa_configuration
+  user_pool_tier    = var.user_pool_tier
 
   # OFF の間は設定ブロックを省略する。登録済み TOTP の削除は行わない。
   dynamic "software_token_mfa_configuration" {
     for_each = var.mfa_configuration != "OFF" && var.totp_enabled ? [true] : []
     content {
       enabled = true
+    }
+  }
+
+  dynamic "email_configuration" {
+    for_each = var.email_mfa_enabled ? [true] : []
+    content {
+      email_sending_account = "DEVELOPER"
+      source_arn            = var.ses_email_identity_arn
+    }
+  }
+
+  dynamic "email_mfa_configuration" {
+    for_each = var.email_mfa_enabled ? [true] : []
+    content {
+      subject = "サインイン確認コード"
+      message = "サインイン確認コードは {####} です。"
     }
   }
 
@@ -61,8 +78,12 @@ resource "aws_cognito_user_pool" "main" {
 
   lifecycle {
     precondition {
-      condition     = var.mfa_configuration == "OFF" || var.totp_enabled
-      error_message = "Enable totp_enabled when MFA is OPTIONAL or ON; TOTP is the only supported factor in this POC."
+      condition     = !var.email_mfa_enabled || (var.mfa_configuration != "OFF" && var.ses_email_identity_arn != null && contains(["ESSENTIALS", "PLUS"], coalesce(var.user_pool_tier, "UNSET")) && var.account_recovery_mode == "admin_only")
+      error_message = "Email MFA requires MFA enabled, a verified SES identity, ESSENTIALS or PLUS, and admin_only recovery in this SMS-free POC."
+    }
+    precondition {
+      condition     = var.mfa_configuration == "OFF" || var.totp_enabled || var.email_mfa_enabled
+      error_message = "Enable totp_enabled or email_mfa_enabled when MFA is OPTIONAL or ON."
     }
     precondition {
       condition     = !var.device_tracking_enabled || (var.mfa_configuration != "OFF" && var.totp_enabled)
@@ -88,10 +109,10 @@ resource "aws_cognito_user_pool" "main" {
     require_uppercase = true
   }
 
-  # パスワード忘れ時などのアカウント復旧メカニズムをメールに設定
+  # 復旧設定はプール全体に適用する。メール MFA POC では管理者復旧のみ。
   account_recovery_setting {
     recovery_mechanism {
-      name     = "verified_email"
+      name     = var.account_recovery_mode
       priority = 1
     }
   }
