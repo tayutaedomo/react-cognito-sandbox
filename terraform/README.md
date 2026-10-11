@@ -11,6 +11,7 @@
   - [3. アプリケーション本体のデプロイ](#3-アプリケーション本体のデプロイ)
 - [環境変数 (direnv)](#環境変数-direnv)
 - [MFA POC](#mfa-poc)
+- [Amplify WAF の切り替え](#amplify-waf-の切り替え)
 
 ## ディレクトリ構成
 
@@ -84,3 +85,11 @@ node --test terraform/tests/mfa.test.mjs
 
 AWS の資格情報や既存 state を使わず、User Pool 定義の plan と入力エラーを検証します。
 事前確認、適用、初回登録、既存ユーザー・セッションの確認は [MFA POC 手順](../docs/poc/005-mfa-foundation.md) を参照してください。
+
+## Amplify WAF の切り替え
+
+`waf_enabled` は既定で `false` です。`terraform.tfvars` で `true` にすると、Amplify 用の Web ACL・関連付け・ログ設定・ロググループを作成します。
+`false` に戻して適用すると、関連付けを解除し、これらの WAF リソースを削除します。WAF の保存済みログも削除されます。
+Cognito の MFA・デバイス登録と Amplify の配信は維持されます。
+
+切り替える際も、使用中の MFA 設定例を同じように指定して plan を確認してください。再有効化時は新しい Web ACL とロググループを作成します。

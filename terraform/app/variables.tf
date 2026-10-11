@@ -80,3 +80,9 @@ variable "account_recovery_mode" {
     error_message = "Choose verified_email or admin_only."
   }
 }
+
+variable "waf_enabled" {
+  description = "Create and associate AWS WAF with Amplify Hosting"
+  type        = bool
+  default     = false
+}
