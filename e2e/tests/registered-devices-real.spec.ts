@@ -39,7 +39,7 @@ test('SRP ログイン後も画面移動と再読み込みでデバイス一覧�
   expect(email).toBeTruthy();
   expect(password).toBeTruthy();
   await page.goto('/');
-  await page.getByRole('button', { name: '信頼するデバイス POC（SRP ログイン）' }).click();
+  await page.getByRole('button', { name: 'メールアドレスでログイン（SRP）' }).click();
   await page.getByLabel('メールアドレス').fill(email!);
   await page.getByLabel('パスワード').fill(password!);
   await page.getByRole('button', { name: 'SRP でログイン' }).click();
@@ -58,14 +58,14 @@ test('SRP ログイン後も画面移動と再読み込みでデバイス一覧�
   await expect(page.getByRole('button', { name: 'このブラウザを信頼する' })).toBeVisible();
   await page.getByRole('button', { name: 'このブラウザを信頼する' }).click();
   try {
-    await expect(status).toHaveText(/この端末：(信頼済み|信頼状態を取得できません)/);
+    await expect(status).toHaveText('この端末：信頼済み');
     const settings = await page.context().newPage();
     await settings.goto('/');
     await settings.getByRole('button', { name: 'MFA 設定', exact: true }).click();
-    await expect(settings.getByTestId('registered-devices-list')).toBeVisible();
+    await expect(settings.getByTestId('registered-devices-list')).toContainText('信頼済み');
     await settings.reload();
     await settings.getByRole('button', { name: 'MFA 設定', exact: true }).click();
-    await expect(settings.getByTestId('registered-devices-list')).toBeVisible();
+    await expect(settings.getByTestId('registered-devices-list')).toContainText('信頼済み');
   } finally {
     await page.getByRole('button', { name: 'この端末の信頼を解除' }).click({ timeout: 10_000 });
     await expect(status).toHaveText('この端末：一覧にありません');

@@ -19,7 +19,7 @@ test.describe('remembered device with SRP', () => {
     async function openPoc(context: Awaited<ReturnType<Browser['newContext']>>) {
       const page = await context.newPage();
       await page.goto('/');
-      await page.getByRole('button', { name: '信頼するデバイス POC（SRP ログイン）' }).click();
+      await page.getByRole('button', { name: 'メールアドレスでログイン（SRP）' }).click();
       return page;
     }
 
@@ -78,12 +78,12 @@ test.describe('remembered device with SRP', () => {
       await login(first, secret, true);
       await expect(first.getByTestId('device-remembered-status')).toHaveText('この端末：一覧にありません');
       await first.getByRole('button', { name: 'このブラウザを信頼する' }).click();
-      await expect(first.getByTestId('device-remembered-status')).toHaveText(/この端末：(信頼済み|信頼状態を取得できません)/);
+      await expect(first.getByTestId('device-remembered-status')).toHaveText('この端末：信頼済み');
       await signOut(first);
 
       const sameBrowser = await openPoc(firstContext);
       await login(sameBrowser, secret, false);
-      await expect(sameBrowser.getByTestId('device-remembered-status')).toHaveText(/この端末：(信頼済み|信頼状態を取得できません)/);
+      await expect(sameBrowser.getByTestId('device-remembered-status')).toHaveText('この端末：信頼済み');
       await sameBrowser.getByRole('button', { name: 'この端末の信頼を解除' }).click();
       await expect(sameBrowser.getByTestId('device-remembered-status')).toHaveText('この端末：一覧にありません');
       await signOut(sameBrowser);

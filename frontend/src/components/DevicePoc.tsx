@@ -5,7 +5,7 @@ import { deviceErrorMessage } from '../auth/deviceService';
 import type { DeviceSnapshot } from '../auth/deviceService';
 
 function formatDate(value?: Date) {
-  return value ? value.toLocaleString() : '取得できません';
+  return value ? value.toLocaleString('ja-JP') : '取得できません';
 }
 
 const currentDeviceLabels = {
@@ -47,9 +47,10 @@ export default function DevicePoc({ onBack }: { onBack: () => void }) {
       const result = await deviceAuth.signIn(email, password);
       if (result === 'totp') setStep('totp');
       else {
+        setPassword('');
         await refreshUser();
-        await loadSnapshot();
         setStep('devices');
+        await loadSnapshot();
       }
     });
   }
@@ -60,10 +61,10 @@ export default function DevicePoc({ onBack }: { onBack: () => void }) {
       const result = await deviceAuth.confirmTotp(code);
       if (result === 'totp') throw new Error('Repeated TOTP challenge');
       await refreshUser();
-      await loadSnapshot();
       setPassword('');
       setCode('');
       setStep('devices');
+      await loadSnapshot();
     });
   }
 
@@ -84,15 +85,15 @@ export default function DevicePoc({ onBack }: { onBack: () => void }) {
   return <main className="app-shell app-shell--narrow">
     <header className="page-heading">
       <button className="button-link" onClick={onBack} disabled={busy}>ホームに戻る</button>
-      <h2>信頼するデバイス POC</h2>
-      <p>この実験用ログインは Cognito User Pools の SRP 認証を使います。通常の Hosted UI はそのまま利用できます。</p>
+      <h2>SRP ログイン</h2>
+      <p>メールアドレスとパスワードでログインします。Managed Login も引き続き利用できます。</p>
     </header>
     <section className="panel">
       {error && <p className="feedback feedback--error" role="alert">{error}</p>}
       {message && <p className="feedback feedback--success" role="status">{message}</p>}
       {busy && <p className="feedback feedback--busy" role="status">処理中...</p>}
       {step === 'credentials' && <form className="form-stack" onSubmit={submitCredentials}>
-        <h3>専用ユーザーでログイン</h3>
+        <h3>ログイン</h3>
         <div className="form-field">
           <label htmlFor="device-email">メールアドレス</label>
           <input id="device-email" type="email" autoComplete="username" required value={email} onChange={event => setEmail(event.target.value)} disabled={busy} />

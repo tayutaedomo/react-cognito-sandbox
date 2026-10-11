@@ -50,7 +50,7 @@ test.describe('Mock Auth and API E2E', () => {
 
   test('shows registered devices after leaving the SRP sign-in screen', async ({ page }) => {
     await page.goto('/');
-    await page.getByRole('button', { name: '信頼するデバイス POC（SRP ログイン）' }).click();
+    await page.getByRole('button', { name: 'メールアドレスでログイン（SRP）' }).click();
     await page.getByLabel('メールアドレス').fill('mock@example.com');
     await page.getByLabel('パスワード').fill('mock-password');
     await page.getByRole('button', { name: 'SRP でログイン' }).click();
@@ -58,11 +58,27 @@ test.describe('Mock Auth and API E2E', () => {
     await page.getByRole('button', { name: '確認', exact: true }).click();
     await expect(page.getByTestId('device-remembered-status')).toHaveText('この端末：一覧にありません');
     await page.getByRole('button', { name: 'このブラウザを信頼する' }).click();
-    await expect(page.getByTestId('device-remembered-status')).toHaveText('この端末：信頼状態を取得できません');
+    await expect(page.getByTestId('device-remembered-status')).toHaveText('この端末：信頼済み');
 
     await page.getByRole('button', { name: 'ホームに戻る' }).click();
     await page.getByRole('button', { name: 'MFA 設定', exact: true }).click();
-    await expect(page.getByTestId('registered-devices-list')).toContainText('Mock device（このブラウザ）：信頼状態を取得できません');
+    await expect(page.getByTestId('registered-devices-list')).toContainText('Mock device（このブラウザ）');
+    await expect(page.getByTestId('registered-devices-list')).toContainText('信頼済み');
+    await page.evaluate(() => {
+      localStorage.setItem('test.deviceKey', 'mock-device');
+      localStorage.setItem('test.randomPassword', 'mock-secret-only');
+      localStorage.setItem('test.idToken', 'mock-token-only');
+      localStorage.setItem('test.other', 'mock-other-only');
+    });
+    await page.getByRole('button', { name: 'localStorage を読み込む' }).click();
+    const storage = page.getByRole('region', { name: 'このブラウザの保存情報' });
+    await expect(storage).toContainText('Cognito の対応デバイス：Mock device（信頼済み）');
+    await storage.locator('summary').filter({ hasText: 'test.randomPassword' }).click();
+    await expect(storage).not.toContainText('mock-secret-only');
+    await storage.getByRole('button', { name: 'マスクを解除して表示' }).click();
+    await expect(storage).toContainText('mock-secret-only');
+    await page.getByRole('button', { name: 'localStorage を読み込む' }).click();
+    await expect(storage).not.toContainText('mock-secret-only');
     await page.screenshot({ path: 'test-results/screenshots/08-registered-devices-mock.png', fullPage: true });
     await page.getByRole('button', { name: 'デバイス一覧を再読み込み' }).click();
     await expect(page.getByTestId('registered-devices-list')).toContainText('Mock device');

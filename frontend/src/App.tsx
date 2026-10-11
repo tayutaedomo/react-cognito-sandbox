@@ -55,7 +55,7 @@ function MainApp() {
             <button className="button-primary" onClick={signIn} disabled={isLoading}>
               {isLoading ? '処理中...' : 'ログイン / 登録 / パスワード再設定 (Managed Login)'}
             </button>
-            <button onClick={() => setCurrentView('device-poc')}>信頼するデバイス POC（SRP ログイン）</button>
+            <button onClick={() => setCurrentView('device-poc')}>メールアドレスでログイン（SRP）</button>
           </div>
         </section>
       ) : (

@@ -1,6 +1,9 @@
 export interface DeviceRecord {
   id: string;
   name?: string;
+  createdDate?: Date;
+  modifiedDate?: Date;
+  raw?: unknown;
   lastAuthenticatedDate?: Date;
   attributes?: Record<string, string>;
 }

@@ -50,7 +50,7 @@ export function MockAuthProvider({ children }: Props) {
         return { isSignedIn: true, nextStep: { signInStep: 'DONE' } };
       },
       async fetchMFAPreference() { return { enabled: ['TOTP'] }; },
-      async fetchDevices() { return remembered ? [{ id: 'mock-device', name: 'Mock device', attributes: { device_status: 'valid' } }] : []; },
+      async fetchDevices() { return remembered ? [{ id: 'mock-device', name: 'Mock device', attributes: { device_status: 'valid', 'dev:device_remembered_status': 'remembered' } }] : []; },
       async fetchAuthSession() { return mockSession(); },
       async rememberDevice() { remembered = true; },
       async forgetDevice() { remembered = false; },

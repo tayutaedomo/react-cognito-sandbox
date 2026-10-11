@@ -17,19 +17,19 @@ function fixture() {
 describe('MFA settings service', () => {
   it('does not infer stored registration from absent enabled preferences', async () => {
     const { service } = fixture();
-    expect(await service.getPreference()).toEqual({ enabled: false, preferred: false });
+    expect(await service.getPreference()).toEqual({ enabled: false, preferred: false, raw: { enabled: [] } });
   });
 
   it('reads enabled TOTP independently of other factors', async () => {
     const { api, service } = fixture();
     api.fetchMFAPreference.mockResolvedValue({ enabled: ['SMS', 'TOTP'], preferred: 'TOTP' });
-    expect(await service.getPreference()).toEqual({ enabled: true, preferred: true });
+    expect(await service.getPreference()).toEqual({ enabled: true, preferred: true, raw: { enabled: ['SMS', 'TOTP'], preferred: 'TOTP' } });
   });
 
   it('does not treat another factor as TOTP enabled', async () => {
     const { api, service } = fixture();
     api.fetchMFAPreference.mockResolvedValue({ enabled: ['SMS'], preferred: 'SMS' });
-    expect(await service.getPreference()).toEqual({ enabled: false, preferred: false });
+    expect(await service.getPreference()).toEqual({ enabled: false, preferred: false, raw: { enabled: ['SMS'], preferred: 'SMS' } });
   });
 
   it('returns a local authenticator URI without enabling MFA', async () => {

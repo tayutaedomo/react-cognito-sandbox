@@ -146,3 +146,12 @@ code { display: inline-block; margin-top: 8px; padding: 5px 8px; border-radius: 
 @media (prefers-reduced-motion: reduce) {
   button { transition: none; }
 }
+
+.device-list { list-style: none; padding: 0; display: grid; gap: 1rem; }
+.device-list > li { padding: 1.25rem; border: 1px solid #dbe3ef; border-radius: 12px; background: #f8faff; }
+.device-list h4 { margin: 0 0 .75rem; overflow-wrap: anywhere; }
+.device-dates { display: grid; grid-template-columns: auto 1fr; gap: .4rem 1rem; font-size: .9rem; }
+.device-dates dd { margin: 0; }
+.raw-data { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 24rem; overflow: auto; padding: 1rem; background: #eef2f8; border-radius: 8px; font-size: .8rem; }
+.storage-item { padding: .7rem 0; border-bottom: 1px solid #dbe3ef; overflow-wrap: anywhere; }
+.storage-item summary { overflow-wrap: anywhere; }

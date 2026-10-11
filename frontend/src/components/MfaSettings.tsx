@@ -4,6 +4,8 @@ import QRCode from 'qrcode';
 import { useAuth } from '../auth/AuthContext';
 import { mfaErrorMessage } from '../auth/mfaService';
 import type { MfaPreference, TotpSetup } from '../auth/mfaService';
+import BrowserStorage from './BrowserStorage';
+import MaskedData from './MaskedData';
 import RegisteredDevices from './RegisteredDevices';
 
 export default function MfaSettings({ onBack }: { onBack: () => void }) {
@@ -87,6 +89,7 @@ export default function MfaSettings({ onBack }: { onBack: () => void }) {
         <p>認証アプリを使うと、パスワードに加えて6桁のコードでログインできます。</p>
       </header>
       <section className="panel">
+        <h3>TOTP 設定</h3>
         {error && <p className="feedback feedback--error" role="alert">{error}</p>}
         {message && <p className="feedback feedback--success" role="status">{message}</p>}
         {busy && <p className="feedback feedback--busy" role="status">処理中...</p>}
@@ -104,7 +107,6 @@ export default function MfaSettings({ onBack }: { onBack: () => void }) {
             )}
           </div>
         )}
-        {!setup && !verified && preference && !preference.enabled && <p className="help-text">登録済みのアプリがある場合は再び有効にできます。未登録の場合は、先に登録してください。</p>}
         {setup && (
           <section className="subpanel">
             <h3>認証アプリを登録</h3>
@@ -133,9 +135,15 @@ export default function MfaSettings({ onBack }: { onBack: () => void }) {
             <button className="button-primary" onClick={() => { void setEnabled(true); }} disabled={busy}>有効化を再試行する</button>
           </section>
         )}
-        <p className="page-note">変更後はサインアウトし、新しいログインで確認してください。現在のログイン状態は継続します。</p>
+        {preference && <MaskedData label="MFA 設定の API 応答" value={preference.raw} />}
+        <div className="page-note">
+          {!setup && !verified && preference && !preference.enabled && <p className="help-text">登録済みのアプリがある場合は再び有効にできます。未登録の場合は、先に登録してください。</p>}
+          <p>変更後はサインアウトし、新しいログインで確認してください。現在のログイン状態は継続します。</p>
+          <p>Cognito に登録済みの TOTP シークレットは取得できません。デバイスの信頼状態は下のグループで確認してください。</p>
+        </div>
       </section>
       <RegisteredDevices />
+      <BrowserStorage />
     </main>
   );
 }

@@ -92,9 +92,10 @@ flowchart TB
         G["API Gateway<br/>JWT 検証"]
         L["Lambda / FastAPI"]
         G <-->|Users API| L
-        L <-->|IAM 権限で ListUsers| C
+        L <-->|IAM 権限で ListUsers / AdminListDevices| C
     end
-    A <-->|リダイレクト認証・設定 API| C
+    A <-->|リダイレクト認証・TOTP 設定 API| C
+    A <-->|本人のデバイス一覧・ID トークン| G
     R <-->|Users API・ID トークン| G
     style B fill:#f3f3f3,stroke:#888,stroke-dasharray:5 5
 ```
