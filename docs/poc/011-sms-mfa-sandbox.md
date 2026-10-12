@@ -109,6 +109,8 @@ SMS サンドボックスで日本の携帯番号1件の確認と、配送確認
 
 単体テストで3方式の有効状態・優先設定・電話番号確認・SMS 認証ステップ・誤コードと期限切れの扱いを検証します。モック E2E は電話番号確認、4つの優先設定、3方式選択、SMS の誤コード再試行、信頼済み端末の省略と解除後の再要求を検証します。キャプチャはモックのみです。
 
-実環境の plan は SMS 用の3リソース作成と User Pool の SMS 設定更新のみを確認しました。Cognito への適用、公開 frontend のデプロイ、実 Cognito での SMS サインインと全方式の組み合わせ確認は未実施です。実電話番号・コード・トークンをテスト成果物に保存しません。
+実環境の plan は SMS 用の3リソース作成と User Pool の SMS 設定更新のみを確認し、適用しました。適用後の plan は差分なしです。SDK で OPTIONAL・SMS・TOTP・メール・東京の SMS 配送・管理者復旧・デバイスの User Opt-In を確認しました。専用ユーザーに電話番号を設定し、Cognito の番号確認は未完了の状態を維持しています。
+
+公開 frontend のデプロイ成功、HTTP 200、配信 JavaScript とローカルビルドの一致を確認しました。実 Cognito での SMS サインインと全方式の組み合わせ確認は未実施です。実電話番号・コード・トークンをテスト成果物に保存しません。
 
 参考：[AWS：Cognito の SMS 設定](https://docs.aws.amazon.com/cognito/latest/developerguide/user-pool-sms-settings.html)、[SNS サンドボックス](https://docs.aws.amazon.com/sns/latest/dg/sns-sms-sandbox.html)。
