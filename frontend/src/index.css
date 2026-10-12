@@ -156,4 +156,12 @@ code { display: inline-block; margin-top: 8px; padding: 5px 8px; border-radius: 
 .storage-item { padding: .7rem 0; border-bottom: 1px solid #dbe3ef; overflow-wrap: anywhere; }
 .storage-item summary { overflow-wrap: anywhere; }
 
-.session-actions { display: flex; justify-content: flex-end; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); }
+.account-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.account-identity { min-width: 0; }
+.account-label { margin: 0 0 6px; font-size: .85rem; color: var(--muted); }
+.account-identity .welcome { margin: 0; font-size: 1rem; }
+.account-signout { flex-shrink: 0; color: var(--muted); font-weight: 500; }
+@media (max-width: 640px) {
+  .account-header { flex-direction: column; gap: 8px; }
+  .account-signout { align-self: flex-start; }
+}

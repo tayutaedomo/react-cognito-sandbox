@@ -327,13 +327,23 @@ test.describe('Mock Auth and API E2E', () => {
     await page.click('button:has-text("ログイン / 登録 / パスワード再設定 (Managed Login)")');
 
     // Wait for mock login to complete
-    await expect(page.locator('text=mock@example.com でサインイン中')).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('.account-identity').getByText('mock@example.com', { exact: true })).toBeVisible({
+      timeout: 5000,
+    });
     const settings = await page.getByRole('button', { name: 'MFA 設定', exact: true }).boundingBox();
     const logout = await page.getByRole('button', { name: 'サインアウト', exact: true }).boundingBox();
     expect(settings).not.toBeNull();
     expect(logout).not.toBeNull();
-    expect(logout!.y).toBeGreaterThan(settings!.y + settings!.height);
+    expect(logout!.y + logout!.height).toBeLessThanOrEqual(settings!.y);
     expect(logout!.x).toBeGreaterThan(settings!.x);
+    await page.setViewportSize({ width: 390, height: 844 });
+    const identity = await page.locator('.account-identity').boundingBox();
+    const mobileLogout = await page.getByRole('button', { name: 'サインアウト', exact: true }).boundingBox();
+    expect(mobileLogout!.y).toBeGreaterThanOrEqual(identity!.y + identity!.height);
+    expect(Math.abs(mobileLogout!.x - identity!.x)).toBeLessThan(2);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await page.screenshot({ path: 'test-results/screenshots/17-home-account-mobile-mock.png', fullPage: true });
+    await page.setViewportSize({ width: 1280, height: 720 });
 
     await page.screenshot({ path: 'test-results/screenshots/02-after-signin.png', fullPage: true });
 

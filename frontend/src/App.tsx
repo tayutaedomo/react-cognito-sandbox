@@ -91,23 +91,27 @@ function MainApp() {
       ) : (
         <>
           <section className="panel">
-            <p className="welcome">{user.email || user.username} でサインイン中</p>
-            <div className="action-row">
-              <button disabled={busy} onClick={() => setCurrentView('profile')}>
-                プロフィール編集
-              </button>
-              <button disabled={busy} onClick={() => setCurrentView('mfa')}>
-                MFA 設定
-              </button>
-            </div>
-            <div className="session-actions">
+            <div className="account-header">
+              <div className="account-identity">
+                <p className="account-label">サインイン中</p>
+                <p className="welcome">{user.email || user.username}</p>
+              </div>
               <button
+                className="button-link account-signout"
                 disabled={busy}
                 onClick={() => {
                   void runAction('signOut', signOut);
                 }}
               >
                 サインアウト
+              </button>
+            </div>
+            <div className="action-row">
+              <button disabled={busy} onClick={() => setCurrentView('profile')}>
+                プロフィール編集
+              </button>
+              <button disabled={busy} onClick={() => setCurrentView('mfa')}>
+                MFA 設定
               </button>
             </div>
           </section>
