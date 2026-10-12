@@ -71,3 +71,6 @@ tmp/
 
 # メール MFA の配送確認記録（ローカルのみ）
 .email-mfa-delivery.json
+
+# SMS MFA の配送確認記録（ローカルのみ）
+.sms-mfa-delivery.json

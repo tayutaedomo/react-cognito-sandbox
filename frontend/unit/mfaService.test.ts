@@ -177,3 +177,67 @@ it('does not permit email activation before the environment is ready', async () 
   await expect(service.setEmailEnabled(true)).rejects.toMatchObject({ name: 'EmailMfaUnavailable' });
   expect(api.updateMFAPreference).not.toHaveBeenCalled();
 });
+
+describe('SMS and three-factor preferences', () => {
+  it('reads SMS independently and enables it only after phone verification', async () => {
+    const { api, service } = fixture();
+    api.fetchUserAttributes.mockResolvedValue({ phone_number: '+819012345678', phone_number_verified: 'true' });
+    api.fetchMFAPreference.mockResolvedValue({ enabled: ['TOTP', 'EMAIL'], preferred: 'EMAIL' });
+    await service.setSmsEnabled(true);
+    expect(api.updateMFAPreference).toHaveBeenCalledWith({ sms: 'ENABLED' });
+    api.fetchMFAPreference.mockResolvedValue({ enabled: ['SMS'], preferred: 'SMS' });
+    expect(await service.getPreference()).toMatchObject({ smsEnabled: true, enabled: false, emailEnabled: false });
+  });
+  it('blocks unverified or unavailable SMS without saving settings', async () => {
+    const { api, service } = fixture();
+    await expect(service.setSmsEnabled(true)).rejects.toMatchObject({ name: 'UnverifiedMfaPhone' });
+    const unavailable = createMfaService(api, { emailAvailable: true, smsAvailable: false });
+    await expect(unavailable.setSmsEnabled(true)).rejects.toMatchObject({ name: 'SmsMfaUnavailable' });
+    expect(api.updateMFAPreference).not.toHaveBeenCalled();
+  });
+  it.each(['TOTP', 'EMAIL', 'SMS', null] as const)('sets three-factor preference %s', async (method) => {
+    const { api, service } = fixture();
+    api.fetchMFAPreference.mockResolvedValue({ enabled: ['TOTP', 'EMAIL', 'SMS'] });
+    await service.setPreferred(method);
+    expect(api.updateMFAPreference).toHaveBeenCalledWith({
+      totp: method === 'TOTP' ? 'PREFERRED' : 'NOT_PREFERRED',
+      email: method === 'EMAIL' ? 'PREFERRED' : 'NOT_PREFERRED',
+      sms: method === 'SMS' ? 'PREFERRED' : 'NOT_PREFERRED',
+    });
+  });
+  it('clears a disabled preferred factor and keeps two others available for selection', async () => {
+    const { api, service } = fixture();
+    api.fetchMFAPreference.mockResolvedValue({ enabled: ['TOTP', 'EMAIL', 'SMS'], preferred: 'SMS' });
+    await service.setSmsEnabled(false);
+    expect(api.updateMFAPreference).toHaveBeenCalledWith({
+      sms: 'DISABLED',
+      totp: 'NOT_PREFERRED',
+      email: 'NOT_PREFERRED',
+    });
+  });
+  it('does not change another preferred factor when disabling one of three', async () => {
+    const { api, service } = fixture();
+    api.fetchMFAPreference.mockResolvedValue({ enabled: ['TOTP', 'EMAIL', 'SMS'], preferred: 'EMAIL' });
+    await service.setSmsEnabled(false);
+    expect(api.updateMFAPreference).toHaveBeenCalledWith({ sms: 'DISABLED' });
+  });
+  it('makes SMS preferred when it is the only remaining factor', async () => {
+    const { api, service } = fixture();
+    api.fetchMFAPreference.mockResolvedValue({ enabled: ['TOTP', 'SMS'], preferred: 'TOTP' });
+    await service.setEnabled(false);
+    expect(api.updateMFAPreference).toHaveBeenCalledWith({ totp: 'DISABLED', sms: 'PREFERRED' });
+  });
+  it('reads and verifies phone ownership separately from MFA', async () => {
+    const { api, service } = fixture();
+    api.fetchUserAttributes.mockResolvedValue({ phone_number: '+819012345678', phone_number_verified: 'false' });
+    expect(await service.getPhone()).toEqual({ address: '+819012345678', verified: false });
+    await service.sendPhoneVerification();
+    await service.verifyPhone(' 012345 ');
+    expect(api.sendUserAttributeVerificationCode).toHaveBeenCalledWith({ userAttributeKey: 'phone_number' });
+    expect(api.confirmUserAttribute).toHaveBeenCalledWith({
+      userAttributeKey: 'phone_number',
+      confirmationCode: '012345',
+    });
+    expect(api.updateMFAPreference).not.toHaveBeenCalled();
+  });
+});

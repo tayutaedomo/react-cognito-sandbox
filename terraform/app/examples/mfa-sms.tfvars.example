@@ -1,0 +1,3 @@
+# 既存のメール MFA 設定に重ねて指定する。SMS 配送確認後に適用する。
+# MFA OPTIONAL・TOTP・メール・デバイス・管理者復旧の設定は維持する。
+sms_mfa_enabled = true

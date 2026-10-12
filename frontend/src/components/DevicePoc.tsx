@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { useAuth } from '../auth/AuthContext';
 import { deviceErrorMessage, isExpiredSignInSession } from '../auth/deviceService';
+import { mfaMethodLabels } from '../auth/mfaService';
 import type { MfaMethod } from '../auth/mfaService';
 import type { DeviceSignInStep, DeviceSnapshot } from '../auth/deviceService';
 
@@ -22,7 +23,7 @@ export default function DevicePoc({ onBack }: { onBack: () => void }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [code, setCode] = useState('');
-  const [step, setStep] = useState<'credentials' | 'totp' | 'email' | 'selection' | 'devices'>('credentials');
+  const [step, setStep] = useState<'credentials' | 'totp' | 'email' | 'sms' | 'selection' | 'devices'>('credentials');
   const [destination, setDestination] = useState<string | undefined>();
   const [methods, setMethods] = useState<MfaMethod[]>([]);
   const [snapshot, setSnapshot] = useState<DeviceSnapshot | null>(null);
@@ -66,10 +67,10 @@ export default function DevicePoc({ onBack }: { onBack: () => void }) {
     } else if (result === 'totp') {
       setPassword('');
       setStep('totp');
-    } else if (result.kind === 'email') {
+    } else if (result.kind === 'email' || result.kind === 'sms') {
       setPassword('');
       setDestination(result.destination);
-      setStep('email');
+      setStep(result.kind);
     } else {
       setPassword('');
       setMethods(result.methods);
@@ -187,20 +188,22 @@ export default function DevicePoc({ onBack }: { onBack: () => void }) {
                     });
                   }}
                 >
-                  {method === 'TOTP' ? '認証アプリで確認' : 'メールで確認'}
+                  {mfaMethodLabels[method]}で確認
                 </button>
               ))}
             </div>
           </section>
         )}
-        {(step === 'totp' || step === 'email') && (
+        {(step === 'totp' || step === 'email' || step === 'sms') && (
           <form className="form-stack" onSubmit={submitCode}>
-            <h3>{step === 'totp' ? 'TOTP を入力' : 'メールのコードを入力'}</h3>
-            {step === 'email' && (
-              <p>送信先：{destination ?? 'Cognito に登録したメールアドレス'}。届いたコードを入力してください。</p>
+            <h3>{step === 'totp' ? 'TOTP を入力' : `${step === 'sms' ? 'SMS' : 'メール'}のコードを入力`}</h3>
+            {(step === 'email' || step === 'sms') && (
+              <p>送信先：{destination ?? 'Cognito に登録した送信先'}。届いたコードを入力してください。</p>
             )}
             <div className="form-field form-field--compact">
-              <label htmlFor="device-totp">{step === 'totp' ? '認証アプリの6桁コード' : 'メールの6桁コード'}</label>
+              <label htmlFor="device-totp">
+                {step === 'totp' ? '認証アプリの6桁コード' : `${step === 'sms' ? 'SMS' : 'メール'}の6桁コード`}
+              </label>
               <input
                 id="device-totp"
                 inputMode="numeric"
@@ -220,7 +223,7 @@ export default function DevicePoc({ onBack }: { onBack: () => void }) {
             </div>
           </form>
         )}
-        {(step === 'totp' || step === 'email' || step === 'selection') && (
+        {(step === 'totp' || step === 'email' || step === 'sms' || step === 'selection') && (
           <button
             disabled={busy}
             onClick={() => {
@@ -243,6 +246,7 @@ export default function DevicePoc({ onBack }: { onBack: () => void }) {
                 TOTP：{snapshot.totpEnabled ? '有効' : '無効'}
               </p>
               <p className="metric">メール MFA：{snapshot.emailEnabled ? '有効' : '無効'}</p>
+              <p className="metric">SMS MFA：{snapshot.smsEnabled ? '有効' : '無効'}</p>
               <p
                 className={`metric${snapshot.currentDeviceStatus === 'remembered' ? ' metric--positive' : ''}`}
                 data-testid="device-remembered-status"

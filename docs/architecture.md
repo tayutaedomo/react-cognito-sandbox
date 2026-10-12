@@ -37,7 +37,7 @@ flowchart TD
     User -->|Access| App
     App -->|Sign In Request| Amplify
     Amplify <-->|Redirect & OAuth Flow| Cognito
-    Amplify <-->|Access token / TOTP settings| Cognito
+    Amplify <-->|Access token / MFA settings| Cognito
     App -->|API Request w/ JWT| APIGW
     APIGW -->|Verify Token| Authorizer
     Authorizer -.->|Validate| Cognito
@@ -61,7 +61,8 @@ flowchart TD
 ### MFA の設定
 
 - MFA は Terraform で `OFF` / `OPTIONAL` / `ON` と TOTP を設定可能です。デフォルトは無効で、必須・任意それぞれの POC 用設定例を用意しています。
-- メール MFA は SES の本人確認済み Identity を利用し、ユーザーごとに TOTP とメールを有効化・優先設定します。最小 POC の復旧方針は管理者対応です。[MFA と復旧の組み合わせ](./mfa-and-recovery.md) を参照してください。
+- メール MFA は SES の本人確認済み Identity を利用し、ユーザーごとに TOTP・メール・SMS を有効化・優先設定します。最小 POC の復旧方針は管理者対応です。[MFA と復旧の組み合わせ](./mfa-and-recovery.md) を参照してください。
+- SMS MFA は東京の SNS 経由で配送します。Cognito 用の送信 IAM ロールを Terraform で管理し、サンドボックスでは確認済み番号だけを使用します。[POC 011](./poc/011-sms-mfa-sandbox.md) を参照してください。
 - 任意 MFA では、ログイン後の「MFA 設定」画面から Amplify Auth と Access トークンを使い、TOTP 登録・有効化・無効化を行います。QR はブラウザ内で生成します。バックエンドの管理者 API は使用しません。
 - 必須 MFA の検証は [POC 005](./poc/005-mfa-foundation.md)、任意 MFA の操作・検証は [POC 006](./poc/006-optional-mfa.md) を参照してください。
 

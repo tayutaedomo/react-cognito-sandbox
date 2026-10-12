@@ -39,7 +39,8 @@ resource "random_string" "suffix" {
 # ==============================================================================
 # アプリケーションのユーザーを管理するプール
 resource "aws_cognito_user_pool" "main" {
-  name = "react-cognito-sandbox-pool"
+  name       = "react-cognito-sandbox-pool"
+  depends_on = [aws_iam_role_policy.cognito_sms]
 
   mfa_configuration = var.mfa_configuration
   user_pool_tier    = var.user_pool_tier
@@ -69,6 +70,16 @@ resource "aws_cognito_user_pool" "main" {
     }
   }
 
+  sms_authentication_message = var.sms_mfa_enabled ? "Your sign-in code is {####}." : null
+  dynamic "sms_configuration" {
+    for_each = var.sms_mfa_enabled ? [true] : []
+    content {
+      sns_caller_arn = aws_iam_role.cognito_sms[0].arn
+      external_id    = random_uuid.cognito_sms[0].result
+      sns_region     = "ap-northeast-1"
+    }
+  }
+
   dynamic "device_configuration" {
     for_each = var.device_tracking_enabled ? [true] : []
     content {
@@ -79,12 +90,16 @@ resource "aws_cognito_user_pool" "main" {
 
   lifecycle {
     precondition {
-      condition     = !var.email_mfa_enabled || (var.mfa_configuration != "OFF" && var.ses_email_identity_arn != null && contains(["ESSENTIALS", "PLUS"], coalesce(var.user_pool_tier, "UNSET")) && var.account_recovery_mode == "admin_only")
-      error_message = "Email MFA requires MFA enabled, a verified SES identity, ESSENTIALS or PLUS, and admin_only recovery in this SMS-free POC."
+      condition     = !var.sms_mfa_enabled || (var.mfa_configuration != "OFF" && var.account_recovery_mode == "admin_only")
+      error_message = "SMS MFA requires MFA enabled and admin_only recovery in this POC."
     }
     precondition {
-      condition     = var.mfa_configuration == "OFF" || var.totp_enabled || var.email_mfa_enabled
-      error_message = "Enable totp_enabled or email_mfa_enabled when MFA is OPTIONAL or ON."
+      condition     = !var.email_mfa_enabled || (var.mfa_configuration != "OFF" && var.ses_email_identity_arn != null && contains(["ESSENTIALS", "PLUS"], coalesce(var.user_pool_tier, "UNSET")) && var.account_recovery_mode == "admin_only")
+      error_message = "Email MFA requires MFA enabled, a verified SES identity, ESSENTIALS or PLUS, and admin_only recovery in this POC."
+    }
+    precondition {
+      condition     = var.mfa_configuration == "OFF" || var.totp_enabled || var.email_mfa_enabled || var.sms_mfa_enabled
+      error_message = "Enable totp_enabled, email_mfa_enabled or sms_mfa_enabled when MFA is OPTIONAL or ON."
     }
     precondition {
       condition     = !var.device_tracking_enabled || (var.mfa_configuration != "OFF" && var.totp_enabled)
@@ -497,4 +512,44 @@ moved {
 moved {
   from = aws_wafv2_web_acl_association.amplify
   to   = aws_wafv2_web_acl_association.amplify[0]
+}
+
+# Cognito の SMS は SNS へ電話番号を指定して直接送信する（トピックは作成しない）。
+resource "random_uuid" "cognito_sms" {
+  count = var.sms_mfa_enabled ? 1 : 0
+}
+
+resource "aws_iam_role" "cognito_sms" {
+  count = var.sms_mfa_enabled ? 1 : 0
+  name  = "${var.project_name}-cognito-sms"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "cognito-idp.amazonaws.com" }
+      Action    = "sts:AssumeRole"
+      Condition = {
+        StringEquals = {
+          "sts:ExternalId"    = random_uuid.cognito_sms[0].result
+          "aws:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnLike = {
+          "aws:SourceArn" = "arn:aws:cognito-idp:ap-northeast-1:${data.aws_caller_identity.current.account_id}:userpool/*"
+        }
+      }
+    }]
+  })
+}
+
+resource "aws_iam_role_policy" "cognito_sms" {
+  count = var.sms_mfa_enabled ? 1 : 0
+  role  = aws_iam_role.cognito_sms[0].id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = "sns:Publish"
+      Resource = "*"
+    }]
+  })
 }

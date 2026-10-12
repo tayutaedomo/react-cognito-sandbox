@@ -91,6 +91,89 @@ test.describe('Mock Auth and API E2E', () => {
     await expect(page.getByLabel('認証アプリの6桁コード')).toHaveCount(0);
   });
 
+  test('SMS phone verification, three-factor preferences, selection and retry', async ({ page }) => {
+    await page.goto('/');
+    await page.getByRole('button', { name: 'ログイン / 登録 / パスワード再設定 (Managed Login)' }).click();
+    await page.getByRole('button', { name: 'MFA 設定', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'SMS MFA を有効にする', exact: true })).toBeDisabled();
+    await page.getByRole('button', { name: '電話番号の確認コードを送信', exact: true }).click();
+    await page.getByLabel('電話番号の確認コード', { exact: true }).fill('000000');
+    await page.getByRole('button', { name: '電話番号を確認する', exact: true }).click();
+    await expect(page.getByRole('alert')).toContainText('コードが一致しません');
+    await page.getByLabel('電話番号の確認コード', { exact: true }).fill('123456');
+    await page.getByRole('button', { name: '電話番号を確認する', exact: true }).click();
+    await page.getByRole('button', { name: 'SMS MFA を有効にする', exact: true }).click();
+    await expect(page.getByTestId('sms-mfa-status')).toHaveText('SMS：有効（優先方式）');
+    await page.getByRole('button', { name: 'メール MFA を有効にする', exact: true }).click();
+    await page.getByRole('button', { name: '認証アプリを登録する', exact: true }).click();
+    await page.getByLabel('認証アプリの6桁コード').fill('123456');
+    await page.getByRole('button', { name: 'コードを確認して有効にする' }).click();
+    for (const method of ['TOTP', 'EMAIL', 'SMS', 'choose']) {
+      await page.getByLabel('優先方式').selectOption(method);
+      await expect(page.getByRole('status')).toContainText('ログイン時の方式を保存しました');
+      const statuses = { TOTP: 'mfa-status', EMAIL: 'email-mfa-status', SMS: 'sms-mfa-status' };
+      for (const [value, id] of Object.entries(statuses)) {
+        if (value === method) await expect(page.getByTestId(id)).toContainText('優先方式');
+        else await expect(page.getByTestId(id)).not.toContainText('優先方式');
+      }
+    }
+    await page.screenshot({ path: 'test-results/screenshots/13-three-factor-settings-mock.png', fullPage: true });
+    await page.getByRole('button', { name: 'ホームに戻る' }).click();
+    await page.getByRole('button', { name: 'Sign Out', exact: true }).click();
+    await page.getByRole('button', { name: 'メールアドレスでログイン（SRP）' }).click();
+    await page.getByLabel('メールアドレス', { exact: true }).fill('mock@example.com');
+    await page.getByLabel('パスワード', { exact: true }).fill('mock-password');
+    await page.getByRole('button', { name: 'SRP でログイン' }).click();
+    await expect(page.getByRole('button', { name: '認証アプリで確認' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'メールで確認' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'SMSで確認' })).toBeVisible();
+    await page.screenshot({ path: 'test-results/screenshots/14-three-factor-selection-mock.png', fullPage: true });
+    await page.getByRole('button', { name: 'SMSで確認' }).click();
+    await expect(page.getByText('+********5678', { exact: false })).toBeVisible();
+    await page.getByLabel('SMSの6桁コード').fill('000000');
+    await page.getByRole('button', { name: '確認', exact: true }).click();
+    await expect(page.getByRole('alert')).toContainText('コードが一致しません');
+    await page.screenshot({ path: 'test-results/screenshots/15-sms-code-retry-mock.png', fullPage: true });
+    await page.getByLabel('SMSの6桁コード').fill('123456');
+    await page.getByRole('button', { name: '確認', exact: true }).click();
+    await page.getByRole('button', { name: 'ホームに戻る' }).click();
+    await page.getByRole('button', { name: 'MFA 設定', exact: true }).click();
+    await page.getByRole('button', { name: 'SMS MFA を無効にする', exact: true }).click();
+    await expect(page.getByTestId('sms-mfa-status')).toHaveText('SMS：無効');
+    await expect(page.getByTestId('mfa-status')).toHaveText('TOTP：有効');
+    await expect(page.getByTestId('email-mfa-status')).toHaveText('メール：有効');
+  });
+
+  test('SMS-only MFA is skipped on a trusted browser and required again after forgetting', async ({ page }) => {
+    await page.goto('/');
+    await page.getByRole('button', { name: 'ログイン / 登録 / パスワード再設定 (Managed Login)' }).click();
+    await page.getByRole('button', { name: 'MFA 設定', exact: true }).click();
+    await page.getByRole('button', { name: '電話番号の確認コードを送信' }).click();
+    await page.getByLabel('電話番号の確認コード').fill('123456');
+    await page.getByRole('button', { name: '電話番号を確認する', exact: true }).click();
+    await page.getByRole('button', { name: 'SMS MFA を有効にする', exact: true }).click();
+    await page.getByRole('button', { name: 'ホームに戻る' }).click();
+    await page.getByRole('button', { name: 'Sign Out', exact: true }).click();
+    async function signIn() {
+      await page.getByRole('button', { name: 'メールアドレスでログイン（SRP）' }).click();
+      await page.getByLabel('メールアドレス', { exact: true }).fill('mock@example.com');
+      await page.getByLabel('パスワード', { exact: true }).fill('mock-password');
+      await page.getByRole('button', { name: 'SRP でログイン' }).click();
+    }
+    await signIn();
+    await page.getByLabel('SMSの6桁コード').fill('123456');
+    await page.getByRole('button', { name: '確認', exact: true }).click();
+    await page.getByRole('button', { name: 'このブラウザを信頼する' }).click();
+    await page.getByRole('button', { name: 'サインアウト', exact: true }).click();
+    await signIn();
+    await expect(page.getByTestId('device-remembered-status')).toHaveText('この端末：信頼済み');
+    await expect(page.getByLabel('SMSの6桁コード')).toHaveCount(0);
+    await page.getByRole('button', { name: 'この端末の信頼を解除' }).click();
+    await page.getByRole('button', { name: 'サインアウト', exact: true }).click();
+    await signIn();
+    await expect(page.getByLabel('SMSの6桁コード')).toBeVisible();
+  });
+
   test('cancelling registration removes the QR code and setup key', async ({ page }) => {
     await page.goto('/');
     await page.getByRole('button', { name: 'ログイン / 登録 / パスワード再設定 (Managed Login)' }).click();

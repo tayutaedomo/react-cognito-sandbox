@@ -34,7 +34,10 @@ const mfa = createMfaService(
     verifyTOTPSetup,
     updateMFAPreference,
   },
-  { emailAvailable: import.meta.env.VITE_EMAIL_MFA_ENABLED === 'true' },
+  {
+    emailAvailable: import.meta.env.VITE_EMAIL_MFA_ENABLED === 'true',
+    smsAvailable: import.meta.env.VITE_SMS_MFA_ENABLED === 'true',
+  },
 );
 const deviceAuth = createDeviceService({
   signIn: amplifySignIn,

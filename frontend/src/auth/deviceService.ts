@@ -15,6 +15,7 @@ export type CurrentDeviceStatus = DeviceTrustStatus | 'not_listed' | 'unavailabl
 export interface DeviceSnapshot {
   totpEnabled: boolean;
   emailEnabled: boolean;
+  smsEnabled: boolean;
   devices: DeviceRecord[];
   currentDeviceKey?: string;
   currentDeviceStatus: CurrentDeviceStatus;
@@ -60,17 +61,21 @@ export type DeviceSignInStep =
   | 'signedIn'
   | 'totp'
   | { kind: 'email'; destination?: string }
+  | { kind: 'sms'; destination?: string }
   | { kind: 'selection'; methods: MfaMethod[] };
 
 function mapSignInResult(result: SignInResult): DeviceSignInStep {
   if (result.isSignedIn) return 'signedIn';
   if (result.nextStep.signInStep === 'CONFIRM_SIGN_IN_WITH_TOTP_CODE') return 'totp';
-  if (result.nextStep.signInStep === 'CONFIRM_SIGN_IN_WITH_EMAIL_CODE') {
-    return { kind: 'email', destination: result.nextStep.codeDeliveryDetails?.destination };
+  if (['CONFIRM_SIGN_IN_WITH_EMAIL_CODE', 'CONFIRM_SIGN_IN_WITH_SMS_CODE'].includes(result.nextStep.signInStep)) {
+    return {
+      kind: result.nextStep.signInStep === 'CONFIRM_SIGN_IN_WITH_SMS_CODE' ? 'sms' : 'email',
+      destination: result.nextStep.codeDeliveryDetails?.destination,
+    };
   }
   if (result.nextStep.signInStep === 'CONTINUE_SIGN_IN_WITH_MFA_SELECTION') {
     const methods = (result.nextStep.allowedMFATypes ?? []).filter(
-      (value): value is MfaMethod => value === 'TOTP' || value === 'EMAIL',
+      (value): value is MfaMethod => value === 'TOTP' || value === 'EMAIL' || value === 'SMS',
     );
     if (methods.length) return { kind: 'selection', methods };
   }
@@ -137,6 +142,7 @@ export function createDeviceService(api: DeviceApi): DeviceAuthService {
       return {
         totpEnabled: preference.enabled?.includes('TOTP') ?? false,
         emailEnabled: preference.enabled?.includes('EMAIL') ?? false,
+        smsEnabled: preference.enabled?.includes('SMS') ?? false,
         devices,
         currentDeviceKey,
         currentDeviceStatus: currentDeviceStatus(currentDeviceKey, devices),
@@ -169,6 +175,6 @@ export function deviceErrorMessage(error: unknown): string {
   if (name === 'ExpiredCodeException') return 'コードの期限が切れました。ログインからやり直してください。';
   if (name === 'InvalidMfaSelection') return '表示されている MFA 方式から選択してください。';
   if (name === 'UnsupportedDeviceSignInStep')
-    return 'この画面が扱わない認証ステップです。TOTP またはメール MFA の設定を確認してください。';
+    return 'この画面が扱わない認証ステップです。TOTP・メール・SMS MFA の設定を確認してください。';
   return '端末認証を完了できませんでした。設定とサインイン状態を確認してください。';
 }

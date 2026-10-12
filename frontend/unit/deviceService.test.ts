@@ -122,7 +122,7 @@ describe('email MFA challenges', () => {
     });
     expect(await service.signIn('user@example.com', 'password')).toEqual({
       kind: 'selection',
-      methods: ['TOTP', 'EMAIL'],
+      methods: ['SMS', 'TOTP', 'EMAIL'],
     });
     api.confirmSignIn.mockResolvedValueOnce({
       isSignedIn: false,
@@ -152,4 +152,35 @@ it('restarts expired sessions without treating every wrong code as expiration', 
   expect(isExpiredSignInSession({ name: 'CodeMismatchException' })).toBe(false);
   expect(isExpiredSignInSession({ name: 'NotAuthorizedException', message: 'Incorrect password' })).toBe(false);
   expect(isExpiredSignInSession(null)).toBe(false);
+});
+
+it('surfaces the server-masked SMS destination and preserves retry behavior', async () => {
+  const { api, service } = fixture();
+  api.signIn.mockResolvedValue({
+    isSignedIn: false,
+    nextStep: {
+      signInStep: 'CONFIRM_SIGN_IN_WITH_SMS_CODE',
+      codeDeliveryDetails: { destination: '+********5678' },
+    },
+  });
+  expect(await service.signIn('user@example.com', 'password')).toEqual({ kind: 'sms', destination: '+********5678' });
+  api.confirmSignIn.mockRejectedValueOnce({ name: 'CodeMismatchException' });
+  await expect(service.confirmCode('000000')).rejects.toMatchObject({ name: 'CodeMismatchException' });
+  expect(await service.confirmCode('123456')).toBe('signedIn');
+  api.fetchMFAPreference.mockResolvedValue({ enabled: ['SMS'] });
+  expect(await service.snapshot()).toMatchObject({ smsEnabled: true, totpEnabled: false, emailEnabled: false });
+});
+
+it('rejects an SMS selection that Cognito did not offer', async () => {
+  const { api, service } = fixture();
+  api.signIn.mockResolvedValue({
+    isSignedIn: false,
+    nextStep: {
+      signInStep: 'CONTINUE_SIGN_IN_WITH_MFA_SELECTION',
+      allowedMFATypes: ['EMAIL', 'TOTP', 'OTHER'],
+    },
+  });
+  await service.signIn('user@example.com', 'password');
+  await expect(service.selectMfa('SMS')).rejects.toMatchObject({ name: 'InvalidMfaSelection' });
+  expect(api.confirmSignIn).not.toHaveBeenCalled();
 });

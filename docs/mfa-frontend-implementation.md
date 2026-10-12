@@ -13,9 +13,11 @@ MFA 実装は、①起動時の接続先選択、②共通の MFA 処理、③�
 
 ## 全体像
 
-メール MFA は同じサービスに `getEmail`・`setEmailEnabled`・`setPreferred` を追加しています。TOTP とメールの有効状態を独立して持ち、優先なしでは両方式の `NOT_PREFERRED` を保存します。1方式だけになると残った方式を優先にします。
+MFA サービスは TOTP・メール・SMS の有効状態を独立して持ちます。優先なしでは各有効方式の `NOT_PREFERRED` を保存します。1方式だけになると残った方式を優先にし、優先していた方式を無効にして2方式以上残る場合は選択に戻します。
 
-SRP の `deviceService` は Cognito の次ステップを「完了・TOTP コード・メールコード・方式選択」へ変換します。方式と伏せ字の配送先を画面へ返し、方式選択もコード入力も Amplify の `confirmSignIn` に渡します。モックは同じサービスにブラウザ内の状態を共有する API を渡し、実メールを送りません。
+`MfaSettings` は全体の設定取得と保存を管理します。メール・SMS の表示と確認コード入力は `ContactMfa` にまとめ、実際の API 呼び出しはサービスに任せます。電話番号の確認とサンドボックスでの宛先確認は別の操作です。
+
+SRP の `deviceService` は Cognito の次ステップを「完了・TOTP コード・メールコード・SMS コード・方式選択」へ変換します。方式と伏せ字の配送先を画面へ返し、方式選択もコード入力も Amplify の `confirmSignIn` に渡します。モックは同じサービスにブラウザ内の状態を共有する API を渡し、実メールや SMS を送りません。
 
 [MFA と復旧の設定構造](./mfa-and-recovery.md) と [メール MFA POC](./poc/010-email-mfa-sandbox.md) を参照してください。
 
@@ -74,14 +76,18 @@ MFA サービスの内部で毎回モードを判定しているわけではな�
 | `getPreference()`：設定を取得 | `fetchMFAPreference()` |
 | `startSetup()`：登録用情報を取得 | `setUpTOTP()` |
 | `verifySetup(code)`：6桁を確認して登録検証 | `verifyTOTPSetup()` |
-| `setEnabled(true / false)`：有効化・無効化 | `updateMFAPreference()` |
+| `setEnabled`・`setEmailEnabled`・`setSmsEnabled`：各方式の有効化・無効化 | `updateMFAPreference()` |
+| `setPreferred(method / null)`：優先設定・解除 | `updateMFAPreference()` |
+| `getEmail()`・`getPhone()`：宛先と確認状態の取得 | `fetchUserAttributes()` |
+| `sendEmailVerification()`・`sendPhoneVerification()`：所有確認コード送信 | `sendUserAttributeVerificationCode()` |
+| `verifyEmail(code)`・`verifyPhone(code)`：所有確認コード検証 | `confirmUserAttribute()` |
 
 モックにも違いがある。
 
 - **画面用モック**は状態を持つ。固定コード `123456` で登録成功にし、有効化・無効化をメモリに反映する。画面操作を続けて試すためのもの。ページを再読み込みするとモックの状態は初期化される。
 - **単体テスト用モック**はテストごとに作る。「保存が失敗する」「有効方式が空」といった条件を指定し、共通処理の動きを確認するためのもの。
 
-どちらも Cognito 自体を再現しているわけではない。実際のコード検証や認証要求は実環境 E2E で確認する。
+どちらも Cognito 自体を再現しているわけではない。実際のコード検証や認証要求は実環境で確認する。SMS とメールの組み合わせは少数の手動確認に限定する。
 
 ## 画面内：有効設定と操作の進行で分かれる
 
@@ -113,8 +119,7 @@ flowchart TB
 「無効」だけでは、未登録なのか、登録済みで無効化されているのかを区別できない。
 そのため、登録と再有効化の両方を表示する。
 
-これはログイン後の MFA 設定画面。実際のサインイン時の TOTP 入力画面は、引き続き Cognito が提供する。
-任意 MFA の追加で、そのログイン画面を React に移したわけではない。
+これはログイン後の MFA 設定画面。Managed Login のサインイン画面は Cognito が提供する。SRP 経路では `DevicePoc` が方式選択と TOTP・メール・SMS のコード入力を表示し、`deviceService` を呼ぶ。
 
 ## 実装ファイルと関連文書
 
@@ -126,6 +131,7 @@ flowchart TB
 | [AuthContext.tsx](../frontend/src/auth/AuthContext.tsx) | `mfa` を画面へ提供 |
 | [mfaService.ts](../frontend/src/auth/mfaService.ts) | 共通の MFA 処理とエラー表示の変換 |
 | [App.tsx](../frontend/src/App.tsx) | ログイン後の MFA 設定画面への切り替え |
+| [ContactMfa.tsx](../frontend/src/components/ContactMfa.tsx) | メール・SMS の状態表示と属性確認フォーム |
 | [MfaSettings.tsx](../frontend/src/components/MfaSettings.tsx) | 設定取得・QR・入力・操作の進行に応じた表示 |
 | [mfaService.test.ts](../frontend/unit/mfaService.test.ts) | `vi.fn()` を渡して共通処理を単体テスト |
 
