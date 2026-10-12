@@ -82,7 +82,7 @@ flowchart TD
     CodeError --> App
     CodeOK -->|はい| Callback["React にリダイレクト"]
     Callback --> Session["Amplify がトークンを取得してログイン状態を反映"]
-    Session --> API["Fetch Users で API 呼び出し"]
+    Session --> API["「ユーザー一覧を取得」で API 呼び出し"]
 ```
 
 再試行の矢印は、画面で再試行可能な場合を表す。試行上限やセッション失効時の復旧は別途扱う。
@@ -118,7 +118,7 @@ sequenceDiagram
     R->>C: POST /oauth2/token（認可コード、code_verifier）
     C-->>R: ID / Access / Refresh トークン
     R->>R: fetchAuthSession でログイン状態を反映
-    U->>R: Fetch Users を押す
+    U->>R: 「ユーザー一覧を取得」を押す
     R->>G: GET /api/users（Bearer ID トークン）
     G->>G: JWT の署名・issuer・audience・有効期限を検証
     G->>L: 認証を通過したリクエスト

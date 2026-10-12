@@ -6,6 +6,60 @@ test.describe('Mock Auth and API E2E', () => {
     '実環境モード(VITE_USE_MOCK_COGNITO=false)ではモックのテストをスキップします',
   );
 
+  test('disables both login routes while authentication is loading', async ({ page }) => {
+    const now = new Date('2026-10-12T00:00:00Z');
+    await page.clock.install({ time: now });
+    await page.clock.pauseAt(now);
+    await page.goto('/');
+    await page.getByRole('button', { name: 'ログイン / 登録 / パスワード再設定 (Managed Login)' }).click();
+    await expect(page.getByRole('button', { name: '処理中...', exact: true })).toBeDisabled();
+    await expect(page.getByRole('button', { name: 'メールアドレスでログイン（SRP）' })).toBeDisabled();
+    await page.clock.runFor(500);
+    await expect(page.getByRole('button', { name: 'プロフィール編集', exact: true })).toBeEnabled();
+    await expect(page.getByRole('button', { name: 'サインアウト', exact: true })).toBeEnabled();
+  });
+
+  test('locks all home actions during Users API requests and unlocks after success or failure', async ({ page }) => {
+    await page.goto('/');
+    await page.getByRole('button', { name: 'ログイン / 登録 / パスワード再設定 (Managed Login)' }).click();
+    await expect(page.getByRole('button', { name: 'ユーザー一覧を取得' })).toBeEnabled();
+    let requests = 0;
+    let release: () => void = () => {};
+    let finish = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let status = 200;
+    await page.route('**/api/users', async (route) => {
+      requests++;
+      await finish;
+      await route.fulfill({
+        status,
+        contentType: 'application/json',
+        body: status === 200 ? JSON.stringify([{ id: 'test', email: 'test@example.com', status: 'CONFIRMED' }]) : '{}',
+      });
+    });
+    await page.getByRole('button', { name: 'ユーザー一覧を取得' }).click();
+    for (const name of ['取得中...', 'プロフィール編集', 'サインアウト', 'MFA 設定'])
+      await expect(page.getByRole('button', { name, exact: true })).toBeDisabled();
+    // 無効なボタンへイベントを送っても、追加リクエストを発生させない。
+    await page.getByRole('button', { name: '取得中...', exact: true }).dispatchEvent('click');
+    expect(requests).toBe(1);
+    release();
+    await expect(page.getByText('test@example.com (CONFIRMED)')).toBeVisible();
+    for (const name of ['ユーザー一覧を取得', 'プロフィール編集', 'サインアウト', 'MFA 設定'])
+      await expect(page.getByRole('button', { name, exact: true })).toBeEnabled();
+    finish = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    status = 503;
+    await page.getByRole('button', { name: 'ユーザー一覧を取得' }).click();
+    await expect(page.getByRole('button', { name: '取得中...', exact: true })).toBeDisabled();
+    release();
+    await expect(page.getByRole('alert')).toContainText('503');
+    for (const name of ['ユーザー一覧を取得', 'プロフィール編集', 'サインアウト', 'MFA 設定'])
+      await expect(page.getByRole('button', { name, exact: true })).toBeEnabled();
+  });
+
   test('MFA registration, mismatch retry, disable, and re-enable', async ({ page }) => {
     await page.goto('/');
     await page.getByRole('button', { name: 'ログイン / 登録 / パスワード再設定 (Managed Login)' }).click();
@@ -60,7 +114,7 @@ test.describe('Mock Auth and API E2E', () => {
     await expect(page.getByTestId('mfa-status')).toHaveText('TOTP：有効');
     await page.screenshot({ path: 'test-results/screenshots/10-email-mfa-settings-mock.png', fullPage: true });
     await page.getByRole('button', { name: 'ホームに戻る' }).click();
-    await page.getByRole('button', { name: 'Sign Out', exact: true }).click();
+    await page.getByRole('button', { name: 'サインアウト', exact: true }).click();
     await page.getByRole('button', { name: 'メールアドレスでログイン（SRP）' }).click();
     await page.getByLabel('メールアドレス', { exact: true }).fill('mock@example.com');
     await page.getByLabel('パスワード', { exact: true }).fill('mock-password');
@@ -82,7 +136,7 @@ test.describe('Mock Auth and API E2E', () => {
     await expect(page.getByTestId('mfa-status')).toHaveText('TOTP：有効（優先方式）');
     await expect(page.getByTestId('registered-devices-list')).toContainText('信頼済み');
     await page.getByRole('button', { name: 'ホームに戻る' }).click();
-    await page.getByRole('button', { name: 'Sign Out', exact: true }).click();
+    await page.getByRole('button', { name: 'サインアウト', exact: true }).click();
     await page.getByRole('button', { name: 'メールアドレスでログイン（SRP）' }).click();
     await page.getByLabel('メールアドレス', { exact: true }).fill('mock@example.com');
     await page.getByLabel('パスワード', { exact: true }).fill('mock-password');
@@ -119,7 +173,7 @@ test.describe('Mock Auth and API E2E', () => {
     }
     await page.screenshot({ path: 'test-results/screenshots/13-three-factor-settings-mock.png', fullPage: true });
     await page.getByRole('button', { name: 'ホームに戻る' }).click();
-    await page.getByRole('button', { name: 'Sign Out', exact: true }).click();
+    await page.getByRole('button', { name: 'サインアウト', exact: true }).click();
     await page.getByRole('button', { name: 'メールアドレスでログイン（SRP）' }).click();
     await page.getByLabel('メールアドレス', { exact: true }).fill('mock@example.com');
     await page.getByLabel('パスワード', { exact: true }).fill('mock-password');
@@ -153,7 +207,7 @@ test.describe('Mock Auth and API E2E', () => {
     await page.getByRole('button', { name: '電話番号を確認する', exact: true }).click();
     await page.getByRole('button', { name: 'SMS MFA を有効にする', exact: true }).click();
     await page.getByRole('button', { name: 'ホームに戻る' }).click();
-    await page.getByRole('button', { name: 'Sign Out', exact: true }).click();
+    await page.getByRole('button', { name: 'サインアウト', exact: true }).click();
     async function signIn() {
       await page.getByRole('button', { name: 'メールアドレスでログイン（SRP）' }).click();
       await page.getByLabel('メールアドレス', { exact: true }).fill('mock@example.com');
@@ -242,11 +296,11 @@ test.describe('Mock Auth and API E2E', () => {
     await page.click('button:has-text("ログイン / 登録 / パスワード再設定 (Managed Login)")');
 
     // Wait for mock login to complete
-    await expect(page.locator('text=Welcome, mock@example.com!')).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('text=mock@example.com でサインイン中')).toBeVisible({ timeout: 5000 });
     await page.screenshot({ path: 'test-results/screenshots/02-after-signin.png', fullPage: true });
 
-    // 3. Fetch Users API の呼び出し
-    await page.click('button:has-text("Fetch Users")');
+    // 3. ユーザー一覧を取得 API の呼び出し
+    await page.click('button:has-text("ユーザー一覧を取得")');
 
     // Check if the mock user is displayed
     await expect(page.locator('text=user1@example.com (CONFIRMED)')).toBeVisible({ timeout: 5000 });

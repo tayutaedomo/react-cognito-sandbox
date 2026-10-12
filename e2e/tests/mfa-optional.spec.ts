@@ -42,7 +42,7 @@ test.describe('Optional TOTP MFA', () => {
           .click();
       }
       await page.waitForURL(`${baseURL}/**`);
-      await expect(page.getByRole('button', { name: 'Sign Out', exact: true })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'サインアウト', exact: true })).toBeVisible();
       return page;
     }
 
@@ -53,7 +53,7 @@ test.describe('Optional TOTP MFA', () => {
 
     async function signOut(page: Page) {
       await page.getByRole('button', { name: 'ホームに戻る' }).click();
-      await page.getByRole('button', { name: 'Sign Out', exact: true }).click();
+      await page.getByRole('button', { name: 'サインアウト', exact: true }).click();
       await expect(
         page.getByRole('button', { name: 'ログイン / 登録 / パスワード再設定 (Managed Login)' }),
       ).toBeVisible();
@@ -81,7 +81,7 @@ test.describe('Optional TOTP MFA', () => {
       const usersResponse = enabled.waitForResponse((response) => response.url().endsWith('/api/users'), {
         timeout: 30_000,
       });
-      await enabled.getByRole('button', { name: 'Fetch Users' }).click();
+      await enabled.getByRole('button', { name: 'ユーザー一覧を取得' }).click();
       expect((await usersResponse).status()).toBe(200);
       await expect(enabled.locator('ul')).toContainText(email!, { timeout: 10_000 });
       await openSettings(enabled, true);

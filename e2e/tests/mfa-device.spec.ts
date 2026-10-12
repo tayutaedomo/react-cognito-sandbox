@@ -75,7 +75,7 @@ test.describe('remembered device with SRP', () => {
       await setup.getByRole('button', { name: 'コードを確認して有効にする' }).click();
       await expect(setup.getByTestId('mfa-status')).toHaveText('TOTP：有効（優先方式）');
       await setup.getByRole('button', { name: 'ホームに戻る' }).click();
-      await setup.getByRole('button', { name: 'Sign Out', exact: true }).click();
+      await setup.getByRole('button', { name: 'サインアウト', exact: true }).click();
       await expect(
         setup.getByRole('button', { name: 'ログイン / 登録 / パスワード再設定 (Managed Login)' }),
       ).toBeVisible();

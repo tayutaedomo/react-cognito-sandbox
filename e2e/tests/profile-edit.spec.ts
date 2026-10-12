@@ -32,11 +32,11 @@ test.describe('Profile Editing Flow', () => {
     }
 
     // ホーム画面にいることを確認
-    await expect(page.locator('text=Edit Profile')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('text=プロフィール編集')).toBeVisible({ timeout: 10000 });
 
     // Profile 編集画面へ遷移
-    await page.click('button:has-text("Edit Profile")');
-    await expect(page.locator('text=Edit Profile')).toBeVisible(); // h2
+    await page.click('button:has-text("プロフィール編集")');
+    await expect(page.locator('text=プロフィール編集')).toBeVisible(); // h2
 
     // 入力可能な状態になるのを待つ
     await expect(page.locator('input[name="name"]')).toBeEnabled({ timeout: 5000 });
@@ -47,7 +47,7 @@ test.describe('Profile Editing Flow', () => {
     await page.fill('input[name="phone_number"]', '+819012345678');
 
     // Save
-    await page.click('button:has-text("Save Profile")');
+    await page.click('button:has-text("プロフィールを保存")');
 
     // サクセスメッセージを待つ
     await expect(page.locator('text=Profile updated successfully!')).toBeVisible({
@@ -55,18 +55,18 @@ test.describe('Profile Editing Flow', () => {
     });
 
     // 一旦ホームに戻る
-    await page.click('button:has-text("Back to Home")');
+    await page.click('button:has-text("ホームに戻る")');
 
     // 再度 Profile を開いて値が保持されているか確認
-    await page.click('button:has-text("Edit Profile")');
+    await page.click('button:has-text("プロフィール編集")');
     await expect(page.locator('input[name="name"]')).toHaveValue(newName);
     await expect(page.locator('input[name="phone_number"]')).toHaveValue('+819012345678');
 
     // ホームに戻る
-    await page.click('button:has-text("Back to Home")');
+    await page.click('button:has-text("ホームに戻る")');
 
-    // API ログを出力させるために Fetch Users を実行
-    await page.click('button:has-text("Fetch Users")');
+    // API ログを出力させるために ユーザー一覧を取得 を実行
+    await page.click('button:has-text("ユーザー一覧を取得")');
     // 何らかのリスト（Users）が表示されるか、またはエラーが出ないことを確認
     // 成功していれば ul > li が表示されるはず
     await expect(page.locator('ul > li').first()).toBeVisible({ timeout: 10000 });
