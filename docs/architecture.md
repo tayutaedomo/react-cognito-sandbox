@@ -71,7 +71,7 @@ flowchart TD
 flowchart LR
     Browser([Browser / User])
     Hosting["Amplify Hosting"]
-    WAF["AWS WAFv2 Web ACL"]
+    WAF["AWS WAFv2 Web ACL<br/>waf_enabled=true の場合のみ"]
     API["API Gateway (HTTP API)"]
     Backend["Lambda / FastAPI"]
     Logs["CloudWatch Logs"]
@@ -88,7 +88,8 @@ flowchart LR
 ### フロントエンド配信と WAF
 
 - フロントエンドのビルド成果物は `frontend/scripts/deploy.sh` から Amplify Hosting へアップロードします。
-- Terraform は Amplify Hosting に関連付ける WAF Web ACL と、その CloudWatch Logs 出力先を定義しています。現在の Web ACL はデフォルト許可で、ブロック用ルールは定義されていません。
+- Amplify WAF は `waf_enabled` で切り替え、既定は無効です。有効時だけ Web ACL・関連付け・CloudWatch Logs 出力先を作成します。Web ACL の定義はデフォルト許可で、ブロック用ルールはありません。切り替え手順は [Terraform README](../terraform/README.md#amplify-waf-の切り替え) を参照してください。
+
 ### ログと監査
 
 - API Gateway のアクセスログには、リクエスト情報・`sub`・認可エラーの出力項目を設定しています。

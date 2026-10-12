@@ -40,3 +40,6 @@ allow_admin_create_user_only = false
 # 任意 MFA: OPTIONAL (ログイン後の MFA 設定画面で登録・有効化)
 mfa_configuration = "OFF"
 totp_enabled      = false
+
+# 7. Amplify WAF (POC では既定で無効。必要時だけ有効にする)
+waf_enabled = false

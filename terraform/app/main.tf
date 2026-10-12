@@ -440,12 +440,14 @@ provider "aws" {
 }
 
 resource "aws_cloudwatch_log_group" "waf_amplify" {
+  count             = var.waf_enabled ? 1 : 0
   provider          = aws.us_east_1
   name              = "aws-waf-logs-${var.project_name}-amplify"
   retention_in_days = 7
 }
 
 resource "aws_wafv2_web_acl" "amplify" {
+  count       = var.waf_enabled ? 1 : 0
   provider    = aws.us_east_1
   name        = "${var.project_name}-amplify-waf"
   description = "WAF for Amplify Hosting"
@@ -463,14 +465,36 @@ resource "aws_wafv2_web_acl" "amplify" {
 }
 
 resource "aws_wafv2_web_acl_logging_configuration" "amplify" {
+  count                   = var.waf_enabled ? 1 : 0
   provider                = aws.us_east_1
-  log_destination_configs = [aws_cloudwatch_log_group.waf_amplify.arn]
-  resource_arn            = aws_wafv2_web_acl.amplify.arn
+  log_destination_configs = [aws_cloudwatch_log_group.waf_amplify[0].arn]
+  resource_arn            = aws_wafv2_web_acl.amplify[0].arn
 }
 
 # Amplify Hosting への WAF アタッチ
 resource "aws_wafv2_web_acl_association" "amplify" {
+  count        = var.waf_enabled ? 1 : 0
   provider     = aws.us_east_1
   resource_arn = aws_amplify_app.frontend.arn
-  web_acl_arn  = aws_wafv2_web_acl.amplify.arn
+  web_acl_arn  = aws_wafv2_web_acl.amplify[0].arn
+}
+
+moved {
+  from = aws_cloudwatch_log_group.waf_amplify
+  to   = aws_cloudwatch_log_group.waf_amplify[0]
+}
+
+moved {
+  from = aws_wafv2_web_acl.amplify
+  to   = aws_wafv2_web_acl.amplify[0]
+}
+
+moved {
+  from = aws_wafv2_web_acl_logging_configuration.amplify
+  to   = aws_wafv2_web_acl_logging_configuration.amplify[0]
+}
+
+moved {
+  from = aws_wafv2_web_acl_association.amplify
+  to   = aws_wafv2_web_acl_association.amplify[0]
 }
