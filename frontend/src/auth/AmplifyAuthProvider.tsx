@@ -23,6 +23,7 @@ import { createMfaService } from './mfaService';
 import { createDeviceService } from './deviceService';
 import { fetchOwnDevices } from './diagnostics';
 import type { User } from './AuthContext';
+import { sessionUser } from './sessionUser';
 
 const mfa = createMfaService(
   {
@@ -87,11 +88,7 @@ export const AmplifyAuthProvider = ({ children }: { children: ReactNode }) => {
       const currentUser = await getCurrentUser();
       const session = await fetchAuthSession();
 
-      setUser({
-        username: currentUser.userId,
-        email: currentUser.signInDetails?.loginId || '',
-        token: session.tokens?.idToken?.toString() || '',
-      });
+      setUser(sessionUser(currentUser, session));
     } catch {
       setUser(null);
     }

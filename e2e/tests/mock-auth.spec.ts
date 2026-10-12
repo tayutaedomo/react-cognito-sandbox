@@ -297,6 +297,13 @@ test.describe('Mock Auth and API E2E', () => {
 
     // Wait for mock login to complete
     await expect(page.locator('text=mock@example.com でサインイン中')).toBeVisible({ timeout: 5000 });
+    const settings = await page.getByRole('button', { name: 'MFA 設定', exact: true }).boundingBox();
+    const logout = await page.getByRole('button', { name: 'サインアウト', exact: true }).boundingBox();
+    expect(settings).not.toBeNull();
+    expect(logout).not.toBeNull();
+    expect(logout!.y).toBeGreaterThan(settings!.y + settings!.height);
+    expect(logout!.x).toBeGreaterThan(settings!.x);
+
     await page.screenshot({ path: 'test-results/screenshots/02-after-signin.png', fullPage: true });
 
     // 3. ユーザー一覧を取得 API の呼び出し

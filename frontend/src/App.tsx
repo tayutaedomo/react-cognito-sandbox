@@ -91,11 +91,16 @@ function MainApp() {
       ) : (
         <>
           <section className="panel">
-            <p className="welcome">{user.email} でサインイン中</p>
+            <p className="welcome">{user.email || user.username} でサインイン中</p>
             <div className="action-row">
               <button disabled={busy} onClick={() => setCurrentView('profile')}>
                 プロフィール編集
               </button>
+              <button disabled={busy} onClick={() => setCurrentView('mfa')}>
+                MFA 設定
+              </button>
+            </div>
+            <div className="session-actions">
               <button
                 disabled={busy}
                 onClick={() => {
@@ -103,9 +108,6 @@ function MainApp() {
                 }}
               >
                 サインアウト
-              </button>
-              <button disabled={busy} onClick={() => setCurrentView('mfa')}>
-                MFA 設定
               </button>
             </div>
           </section>

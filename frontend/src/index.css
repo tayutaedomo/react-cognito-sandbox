@@ -155,3 +155,5 @@ code { display: inline-block; margin-top: 8px; padding: 5px 8px; border-radius: 
 .raw-data { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 24rem; overflow: auto; padding: 1rem; background: #eef2f8; border-radius: 8px; font-size: .8rem; }
 .storage-item { padding: .7rem 0; border-bottom: 1px solid #dbe3ef; overflow-wrap: anywhere; }
 .storage-item summary { overflow-wrap: anywhere; }
+
+.session-actions { display: flex; justify-content: flex-end; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); }
