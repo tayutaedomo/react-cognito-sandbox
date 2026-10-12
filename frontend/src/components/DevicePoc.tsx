@@ -103,7 +103,7 @@ export default function DevicePoc({ onBack }: { onBack: () => void }) {
     run(async () => {
       await deviceAuth.forgetCurrentDevice();
       await loadSnapshot();
-      setMessage('このデバイスの信頼を解除しました。次回は MFA が要求されます。');
+      setMessage('このデバイスの登録を削除しました。MFA が有効な場合、次回はコードを要求します。');
     });
 
   const leave = () =>
@@ -274,6 +274,20 @@ export default function DevicePoc({ onBack }: { onBack: () => void }) {
                   このブラウザを信頼する
                 </button>
               )}
+              {snapshot.currentDeviceStatus === 'remembered' && snapshot.currentDeviceKey && (
+                <button
+                  disabled={busy}
+                  onClick={() => {
+                    void run(async () => {
+                      await deviceAuth.untrustDevice(snapshot.currentDeviceKey!);
+                      await loadSnapshot();
+                      setMessage('信頼を解除しました。デバイス登録は残ります。');
+                    });
+                  }}
+                >
+                  この端末の信頼を解除
+                </button>
+              )}
               {snapshot.currentDeviceStatus !== 'not_listed' && (
                 <button
                   className="button-danger"
@@ -282,7 +296,7 @@ export default function DevicePoc({ onBack }: { onBack: () => void }) {
                   }}
                   disabled={busy}
                 >
-                  この端末の信頼を解除
+                  この端末の登録を削除
                 </button>
               )}
               <button

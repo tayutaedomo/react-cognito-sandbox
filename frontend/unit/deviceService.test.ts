@@ -28,6 +28,8 @@ function fixture() {
       },
     }),
     rememberDevice: vi.fn().mockResolvedValue(undefined),
+    untrustDevice: vi.fn().mockResolvedValue(undefined),
+    deleteDevice: vi.fn().mockResolvedValue(undefined),
     forgetDevice: vi.fn().mockResolvedValue(undefined),
   };
   return { api, service: createDeviceService(api) };
@@ -183,4 +185,16 @@ it('rejects an SMS selection that Cognito did not offer', async () => {
   await service.signIn('user@example.com', 'password');
   await expect(service.selectMfa('SMS')).rejects.toMatchObject({ name: 'InvalidMfaSelection' });
   expect(api.confirmSignIn).not.toHaveBeenCalled();
+});
+
+it('separates trust removal from registration deletion even when MFA is disabled', async () => {
+  const { api, service } = fixture();
+  api.fetchMFAPreference.mockResolvedValue({ enabled: [] });
+  await service.untrustDevice('device-1');
+  expect(api.untrustDevice).toHaveBeenCalledWith('device-1');
+  expect(api.deleteDevice).not.toHaveBeenCalled();
+  await service.deleteDevice('device-1');
+  expect(api.deleteDevice).toHaveBeenCalledWith('device-1');
+  await expect(service.deleteDevice('other')).rejects.toThrow();
+  expect(api.deleteDevice).toHaveBeenCalledTimes(1);
 });

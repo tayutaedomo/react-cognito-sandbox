@@ -1,6 +1,8 @@
 import { expect, it, vi } from 'vitest';
 import {
   decodeStoredJwt,
+  mutateOwnDevice,
+  clearDeletedDeviceStorage,
   fetchOwnDevices,
   mapAdminDevices,
   readStorage,
@@ -71,4 +73,43 @@ it('requests only the authenticated self endpoint and fails without configuratio
   });
   request.mockResolvedValue({ ok: false });
   await expect(fetchOwnDevices('https://api', 'token', request)).rejects.toThrow('Device information unavailable');
+});
+
+it('uses separate self-only operations and never includes a user name', async () => {
+  const request = vi.fn().mockResolvedValue({ ok: true });
+  await mutateOwnDevice('https://api.example.com', 'token', 'device/1', 'untrust', request);
+  expect(request).toHaveBeenLastCalledWith('https://api.example.com/api/me/devices/device%2F1/untrust', {
+    method: 'POST',
+    headers: { Authorization: 'Bearer token' },
+    cache: 'no-store',
+  });
+  await mutateOwnDevice('https://api.example.com', 'token', 'device-1', 'delete', request);
+  expect(request.mock.calls[1][1].method).toBe('DELETE');
+  request.mockResolvedValue({ ok: false });
+  await expect(mutateOwnDevice('https://api.example.com', 'token', 'device-1', 'delete', request)).rejects.toThrow(
+    'Device operation unavailable',
+  );
+});
+
+it('clears only storage associated with the deleted device and leaves other users and tokens intact', () => {
+  const data = new Map([
+    ['userA.deviceKey', 'deleted'],
+    ['userA.deviceGroupKey', 'group'],
+    ['userA.randomPasswordKey', 'secret'],
+    ['userA.idToken', 'token'],
+    ['userB.deviceKey', 'other'],
+    ['userB.randomPasswordKey', 'other-secret'],
+  ]);
+  const storage = {
+    get length() {
+      return data.size;
+    },
+    key: (i: number) => [...data.keys()][i] ?? null,
+    getItem: (key: string) => data.get(key) ?? null,
+    removeItem: (key: string) => {
+      data.delete(key);
+    },
+  };
+  clearDeletedDeviceStorage('deleted', storage);
+  expect([...data.keys()]).toEqual(['userA.idToken', 'userB.deviceKey', 'userB.randomPasswordKey']);
 });

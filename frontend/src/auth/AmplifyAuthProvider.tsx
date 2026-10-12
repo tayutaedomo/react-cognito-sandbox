@@ -21,7 +21,7 @@ import { AuthContext } from './AuthContext';
 import { setUpTOTP, verifyTOTPSetup, updateMFAPreference } from 'aws-amplify/auth';
 import { createMfaService } from './mfaService';
 import { createDeviceService } from './deviceService';
-import { fetchOwnDevices } from './diagnostics';
+import { fetchOwnDevices, mutateOwnDevice, clearDeletedDeviceStorage } from './diagnostics';
 import type { User } from './AuthContext';
 import { sessionUser } from './sessionUser';
 
@@ -48,6 +48,15 @@ const deviceAuth = createDeviceService({
     const session = await fetchAuthSession();
     const token = session.tokens?.idToken?.toString();
     return fetchOwnDevices(import.meta.env.VITE_API_ENDPOINT, token);
+  },
+  async untrustDevice(id) {
+    const session = await fetchAuthSession();
+    await mutateOwnDevice(import.meta.env.VITE_API_ENDPOINT, session.tokens?.idToken?.toString(), id, 'untrust');
+  },
+  async deleteDevice(id) {
+    const session = await fetchAuthSession();
+    await mutateOwnDevice(import.meta.env.VITE_API_ENDPOINT, session.tokens?.idToken?.toString(), id, 'delete');
+    clearDeletedDeviceStorage(id, window.localStorage);
   },
   fetchAuthSession,
   rememberDevice,

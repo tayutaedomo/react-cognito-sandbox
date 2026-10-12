@@ -71,7 +71,7 @@ test('SRP ログイン後も画面移動と再読み込みでデバイス一覧�
     await settings.getByRole('button', { name: 'MFA 設定', exact: true }).click();
     await expect(settings.getByTestId('registered-devices-list')).toContainText('信頼済み');
   } finally {
-    await page.getByRole('button', { name: 'この端末の信頼を解除' }).click({ timeout: 10_000 });
-    await expect(status).toHaveText('この端末：一覧にありません');
+    await page.getByRole('button', { name: 'この端末の登録を削除' }).click({ timeout: 10_000 });
+    await expect(status).toHaveText('この端末：未信頼');
   }
 });

@@ -225,7 +225,9 @@ resource "aws_iam_policy" "cognito_access" {
     Statement = [{
       Action = [
         "cognito-idp:ListUsers",
-        "cognito-idp:AdminListDevices"
+        "cognito-idp:AdminListDevices",
+        "cognito-idp:AdminUpdateDeviceStatus",
+        "cognito-idp:AdminForgetDevice"
       ]
       Effect   = "Allow"
       Resource = aws_cognito_user_pool.main.arn

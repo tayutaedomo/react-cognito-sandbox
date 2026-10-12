@@ -24,6 +24,7 @@ export function MockAuthProvider({ children }: Props) {
       emailVerified: true,
       challenge: 'TOTP' as string,
       remembered: false,
+      deviceRegistered: false,
       signedIn: false,
     };
     return {
@@ -134,6 +135,7 @@ export function MockAuthProvider({ children }: Props) {
         );
         if (model.remembered || !enabled.length) {
           model.signedIn = true;
+          model.deviceRegistered = true;
           return { isSignedIn: true, nextStep: { signInStep: 'DONE' } };
         }
         if (enabled.length >= 2 && !model.preferred) {
@@ -156,6 +158,7 @@ export function MockAuthProvider({ children }: Props) {
         if (challengeResponse !== '123456')
           throw Object.assign(new Error('Mismatch'), { name: 'CodeMismatchException' });
         model.signedIn = true;
+        model.deviceRegistered = true;
         return { isSignedIn: true, nextStep: { signInStep: 'DONE' } };
       },
       async fetchMFAPreference() {
@@ -168,14 +171,14 @@ export function MockAuthProvider({ children }: Props) {
         };
       },
       async fetchDevices() {
-        return model.remembered
+        return model.deviceRegistered
           ? [
               {
                 id: 'mock-device',
                 name: 'Mock device',
                 attributes: {
                   device_status: 'valid',
-                  'dev:device_remembered_status': 'remembered',
+                  'dev:device_remembered_status': model.remembered ? 'remembered' : 'not_remembered',
                 },
               },
             ]
@@ -184,11 +187,20 @@ export function MockAuthProvider({ children }: Props) {
       async fetchAuthSession() {
         return mockSession();
       },
+      async untrustDevice() {
+        model.remembered = false;
+      },
+      async deleteDevice() {
+        model.remembered = false;
+        model.deviceRegistered = false;
+      },
       async rememberDevice() {
+        model.deviceRegistered = true;
         model.remembered = true;
       },
       async forgetDevice() {
         model.remembered = false;
+        model.deviceRegistered = false;
       },
     });
   });

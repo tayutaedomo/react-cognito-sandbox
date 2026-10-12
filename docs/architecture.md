@@ -56,6 +56,7 @@ flowchart TD
 - API Gateway の JWT Authorizer が認証を担い、FastAPI は Lambda Web Adapter 経由で動作します。
 - `GET /api/health` と CORS プリフライト用の `OPTIONS /api/{proxy+}` は、JWT 認証を要求しないルートとして定義されています。
 - バックエンドは IAM ロールの権限で Cognito の `ListUsers` を呼び出します。ユーザー情報は Cognito 内で管理します。
+- `POST /api/me/devices/{device_key}/untrust` は本人の信頼状態だけを解除し、`DELETE /api/me/devices/{device_key}` は本人の登録を削除します。本人の識別は API Gateway の検証済み情報から行います。
 - `GET /api/me/devices` は検証済み本人のデバイスだけを `AdminListDevices` で取得し、信頼状態と各属性を返します。
 
 ### MFA の設定

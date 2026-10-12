@@ -30,6 +30,8 @@ export interface DeviceAuthService {
   selectMfa(method: MfaMethod): Promise<DeviceSignInStep>;
   snapshot(): Promise<DeviceSnapshot>;
   rememberCurrentDevice(): Promise<void>;
+  untrustDevice(id: string): Promise<void>;
+  deleteDevice(id: string): Promise<void>;
   forgetCurrentDevice(): Promise<void>;
 }
 
@@ -55,6 +57,8 @@ interface DeviceApi {
   }>;
   rememberDevice: () => Promise<void>;
   forgetDevice: () => Promise<void>;
+  untrustDevice: (id: string) => Promise<void>;
+  deleteDevice: (id: string) => Promise<void>;
 }
 
 export type DeviceSignInStep =
@@ -149,6 +153,14 @@ export function createDeviceService(api: DeviceApi): DeviceAuthService {
         accessTokenExpiresAt: tokenExpiration(accessPayload),
         idTokenExpiresAt: tokenExpiration(idPayload),
       };
+    },
+    async untrustDevice(id) {
+      if (!(await api.fetchDevices()).some((device) => device.id === id)) throw new Error('Device unavailable');
+      await api.untrustDevice(id);
+    },
+    async deleteDevice(id) {
+      if (!(await api.fetchDevices()).some((device) => device.id === id)) throw new Error('Device unavailable');
+      await api.deleteDevice(id);
     },
     async rememberCurrentDevice(): Promise<void> {
       await api.rememberDevice();

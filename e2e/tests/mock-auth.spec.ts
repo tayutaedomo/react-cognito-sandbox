@@ -222,7 +222,7 @@ test.describe('Mock Auth and API E2E', () => {
     await signIn();
     await expect(page.getByTestId('device-remembered-status')).toHaveText('この端末：信頼済み');
     await expect(page.getByLabel('SMSの6桁コード')).toHaveCount(0);
-    await page.getByRole('button', { name: 'この端末の信頼を解除' }).click();
+    await page.getByRole('button', { name: 'この端末の登録を削除' }).click();
     await page.getByRole('button', { name: 'サインアウト', exact: true }).click();
     await signIn();
     await expect(page.getByLabel('SMSの6桁コード')).toBeVisible();
@@ -247,7 +247,7 @@ test.describe('Mock Auth and API E2E', () => {
     await page.getByLabel('パスワード').fill('mock-password');
     await page.getByRole('button', { name: 'SRP でログイン' }).click();
     // MFA を有効化していない OPTIONAL ユーザーは、コードなしでログインする。
-    await expect(page.getByTestId('device-remembered-status')).toHaveText('この端末：一覧にありません');
+    await expect(page.getByTestId('device-remembered-status')).toHaveText('この端末：未信頼');
     await page.getByRole('button', { name: 'このブラウザを信頼する' }).click();
     await expect(page.getByTestId('device-remembered-status')).toHaveText('この端末：信頼済み');
 
@@ -276,6 +276,37 @@ test.describe('Mock Auth and API E2E', () => {
     });
     await page.getByRole('button', { name: 'デバイス一覧を再読み込み' }).click();
     await expect(page.getByTestId('registered-devices-list')).toContainText('Mock device');
+  });
+
+  test('device registration, trust removal and deletion are independent of MFA', async ({ page }) => {
+    await page.goto('/');
+    await page.getByRole('button', { name: 'メールアドレスでログイン（SRP）' }).click();
+    await page.getByLabel('メールアドレス').fill('mock@example.com');
+    await page.getByLabel('パスワード').fill('mock-password');
+    await page.getByRole('button', { name: 'SRP でログイン' }).click();
+    await expect(page.getByTestId('device-remembered-status')).toHaveText('この端末：未信頼');
+    await page.getByRole('button', { name: 'このブラウザを信頼する' }).click();
+    await page.getByRole('button', { name: 'ホームに戻る' }).click();
+    await page.getByRole('button', { name: 'サインアウト', exact: true }).click();
+    await page.getByRole('button', { name: 'ログイン / 登録 / パスワード再設定 (Managed Login)' }).click();
+    await page.getByRole('button', { name: 'MFA 設定', exact: true }).click();
+    await expect(page.getByText('このログインでは現在のブラウザを特定できません。', { exact: false })).toBeVisible();
+    await expect(page.getByTestId('mfa-status')).toHaveText('TOTP：無効');
+    await expect(page.getByTestId('registered-devices-list')).toContainText('信頼済み');
+    await page.getByRole('button', { name: '信頼を解除', exact: true }).click();
+    await page.getByRole('button', { name: 'キャンセル', exact: true }).click();
+    await expect(page.getByTestId('registered-devices-list')).toContainText('信頼済み');
+    await page.getByRole('button', { name: '信頼を解除', exact: true }).click();
+    await page.getByRole('button', { name: '信頼解除を実行' }).click();
+    await expect(page.getByTestId('registered-devices-list')).toContainText('未信頼');
+    await expect(page.getByRole('button', { name: '信頼を解除', exact: true })).toBeDisabled();
+    await page.screenshot({ path: 'test-results/screenshots/16-untrusted-device-mock.png', fullPage: true });
+    await page.getByRole('button', { name: 'デバイス登録を削除', exact: true }).click();
+    await page.getByRole('button', { name: 'キャンセル', exact: true }).click();
+    await expect(page.getByTestId('registered-devices-list')).toContainText('未信頼');
+    await page.getByRole('button', { name: 'デバイス登録を削除', exact: true }).click();
+    await page.getByRole('button', { name: '登録削除を実行', exact: true }).click();
+    await expect(page.getByTestId('registered-devices-empty')).toBeVisible();
   });
 
   test('should sign in with mock and fetch users', async ({ page }) => {
