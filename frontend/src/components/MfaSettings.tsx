@@ -72,9 +72,9 @@ export default function MfaSettings({ onBack }: { onBack: () => void }) {
       setVerified(false);
     });
 
-  const setEnabled = (enabled: boolean) =>
+  const setTotpEnabled = (enabled: boolean) =>
     run(async () => {
-      await mfa.setEnabled(enabled);
+      await mfa.setTotpEnabled(enabled);
       // 保存成功後に読み取りが失敗しても、古い状態で操作させない。
       setPreference(null);
       setPreference(await mfa.getPreference());
@@ -111,7 +111,7 @@ export default function MfaSettings({ onBack }: { onBack: () => void }) {
       setCode('');
       setVerified(true);
       setPreference(null);
-      await mfa.setEnabled(true);
+      await mfa.setTotpEnabled(true);
       setPreference(await mfa.getPreference());
       setVerified(false);
       setMessage('認証アプリを登録し、TOTP を有効にしました。次回の新しいログインでコードを要求します。');
@@ -169,7 +169,7 @@ export default function MfaSettings({ onBack }: { onBack: () => void }) {
               <button
                 className="button-danger"
                 onClick={() => {
-                  void setEnabled(false);
+                  void setTotpEnabled(false);
                 }}
                 disabled={busy}
               >
@@ -182,7 +182,7 @@ export default function MfaSettings({ onBack }: { onBack: () => void }) {
                 </button>
                 <button
                   onClick={() => {
-                    void setEnabled(true);
+                    void setTotpEnabled(true);
                   }}
                   disabled={busy}
                 >
@@ -244,7 +244,7 @@ export default function MfaSettings({ onBack }: { onBack: () => void }) {
             <button
               className="button-primary"
               onClick={() => {
-                void setEnabled(true);
+                void setTotpEnabled(true);
               }}
               disabled={busy}
             >

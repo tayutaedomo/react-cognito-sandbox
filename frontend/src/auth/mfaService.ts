@@ -34,7 +34,7 @@ export interface MfaService {
   getPreference: () => Promise<MfaPreference>;
   startSetup: () => Promise<TotpSetup>;
   verifySetup: (code: string) => Promise<void>;
-  setEnabled: (enabled: boolean) => Promise<void>;
+  setTotpEnabled: (enabled: boolean) => Promise<void>;
   setSmsEnabled: (enabled: boolean) => Promise<void>;
   getPhone: () => Promise<{ address?: string; verified: boolean }>;
   sendPhoneVerification: () => Promise<void>;
@@ -160,7 +160,7 @@ export function createMfaService(
       for (const value of methods) input[methodKeys[value]] = value === method ? 'PREFERRED' : 'NOT_PREFERRED';
       await api.updateMFAPreference(input);
     },
-    async setEnabled(enabled) {
+    async setTotpEnabled(enabled) {
       await toggle('TOTP', enabled);
     },
   };

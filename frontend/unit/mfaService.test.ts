@@ -83,7 +83,7 @@ describe('MFA settings service', () => {
 
   it('enables verified TOTP as preferred without creating a new secret', async () => {
     const { api, service } = fixture();
-    await service.setEnabled(true);
+    await service.setTotpEnabled(true);
     expect(api.updateMFAPreference).toHaveBeenCalledWith({ totp: 'PREFERRED' });
     expect(api.setUpTOTP).not.toHaveBeenCalled();
   });
@@ -95,14 +95,14 @@ describe('MFA settings service', () => {
       name: 'CodeMismatchException',
     });
     api.updateMFAPreference.mockRejectedValue({ name: 'EnableSoftwareTokenMFAException' });
-    await expect(service.setEnabled(true)).rejects.toMatchObject({
+    await expect(service.setTotpEnabled(true)).rejects.toMatchObject({
       name: 'EnableSoftwareTokenMFAException',
     });
   });
 
   it('disables TOTP preference without changing its association', async () => {
     const { api, service } = fixture();
-    await service.setEnabled(false);
+    await service.setTotpEnabled(false);
     expect(api.updateMFAPreference).toHaveBeenCalledWith({ totp: 'DISABLED' });
     expect(api.setUpTOTP).not.toHaveBeenCalled();
     expect(api.verifyTOTPSetup).not.toHaveBeenCalled();
@@ -112,8 +112,8 @@ describe('MFA settings service', () => {
     const { api, service } = fixture();
     await service.verifySetup('123456');
     api.updateMFAPreference.mockRejectedValueOnce(new Error('temporary failure'));
-    await expect(service.setEnabled(true)).rejects.toThrow();
-    await service.setEnabled(true);
+    await expect(service.setTotpEnabled(true)).rejects.toThrow();
+    await service.setTotpEnabled(true);
     expect(api.verifyTOTPSetup).toHaveBeenCalledTimes(1);
     expect(api.updateMFAPreference).toHaveBeenCalledTimes(2);
     expect(api.setUpTOTP).not.toHaveBeenCalled();
@@ -137,7 +137,7 @@ describe('email and preferred MFA', () => {
   it('makes the remaining method preferred when disabling TOTP', async () => {
     const { api, service } = fixture();
     api.fetchMFAPreference.mockResolvedValue({ enabled: ['TOTP', 'EMAIL'], preferred: 'TOTP' });
-    await service.setEnabled(false);
+    await service.setTotpEnabled(false);
     expect(api.updateMFAPreference).toHaveBeenCalledWith({ totp: 'DISABLED', email: 'PREFERRED' });
   });
   it.each(['TOTP', 'EMAIL', null] as const)('saves preference %s independently of enabled methods', async (method) => {
@@ -224,7 +224,7 @@ describe('SMS and three-factor preferences', () => {
   it('makes SMS preferred when it is the only remaining factor', async () => {
     const { api, service } = fixture();
     api.fetchMFAPreference.mockResolvedValue({ enabled: ['TOTP', 'SMS'], preferred: 'TOTP' });
-    await service.setEnabled(false);
+    await service.setTotpEnabled(false);
     expect(api.updateMFAPreference).toHaveBeenCalledWith({ totp: 'DISABLED', sms: 'PREFERRED' });
   });
   it('reads and verifies phone ownership separately from MFA', async () => {

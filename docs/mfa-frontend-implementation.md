@@ -76,7 +76,7 @@ MFA サービスの内部で毎回モードを判定しているわけではな�
 | `getPreference()`：設定を取得 | `fetchMFAPreference()` |
 | `startSetup()`：登録用情報を取得 | `setUpTOTP()` |
 | `verifySetup(code)`：6桁を確認して登録検証 | `verifyTOTPSetup()` |
-| `setEnabled`・`setEmailEnabled`・`setSmsEnabled`：各方式の有効化・無効化 | `updateMFAPreference()` |
+| `setTotpEnabled`・`setEmailEnabled`・`setSmsEnabled`：各方式の有効化・無効化 | `updateMFAPreference()` |
 | `setPreferred(method / null)`：優先設定・解除 | `updateMFAPreference()` |
 | `getEmail()`・`getPhone()`：宛先と確認状態の取得 | `fetchUserAttributes()` |
 | `sendEmailVerification()`・`sendPhoneVerification()`：所有確認コード送信 | `sendUserAttributeVerificationCode()` |
@@ -97,18 +97,18 @@ MFA サービスの内部で毎回モードを判定しているわけではな�
 flowchart TB
     Open["MFA 設定を開く"] --> Read["getPreference で設定取得"]
     Read --> Enabled{"TOTP が有効？"}
-    Enabled -->|はい| Disable["無効化ボタン<br/>setEnabled false"]
+    Enabled -->|はい| Disable["無効化ボタン<br/>setTotpEnabled false"]
     Disable --> Inactive["無効の表示"]
     Enabled -->|いいえ| Actions["2つの操作を表示"]
     Actions --> New["認証アプリを登録する"]
-    Actions --> Existing["登録済みアプリを有効にする<br/>setEnabled true"]
+    Actions --> Existing["登録済みアプリを有効にする<br/>setTotpEnabled true"]
     New --> Setup["startSetup<br/>ブラウザ内で QR を生成・表示"]
     Setup --> Verify["6桁コードを入力<br/>verifySetup"]
     Verify --> Valid{"登録検証に成功？"}
     Valid -->|いいえ| Error["エラー表示<br/>コードを再入力"]
     Error --> Verify
     Valid -->|はい| Clear["QR・キー・入力コードを除去"]
-    Clear --> Save["setEnabled true<br/>有効設定を保存"]
+    Clear --> Save["setTotpEnabled true<br/>有効設定を保存"]
     Save --> Saved{"保存・設定再取得に成功？"}
     Saved -->|はい| Active["有効の表示"]
     Saved -->|いいえ| Retry["有効化の再試行を表示<br/>コード検証は繰り返さない"]
