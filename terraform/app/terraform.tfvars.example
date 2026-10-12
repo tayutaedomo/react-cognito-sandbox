@@ -43,3 +43,6 @@ totp_enabled      = false
 
 # 7. Amplify WAF (POC では既定で無効。必要時だけ有効にする)
 waf_enabled = false
+
+# SMS は配送確認後だけ有効化する
+sms_mfa_enabled = false

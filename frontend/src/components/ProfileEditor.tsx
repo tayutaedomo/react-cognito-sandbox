@@ -97,9 +97,9 @@ const ProfileEditor: React.FC<ProfileEditorProps> = ({ onBack }) => {
     <main className="app-shell app-shell--narrow">
       <header className="page-heading">
         <button className="button-link" onClick={onBack}>
-          &larr; Back to Home
+          ホームに戻る
         </button>
-        <h2>Edit Profile</h2>
+        <h2>プロフィール編集</h2>
       </header>
 
       {message && (
@@ -138,7 +138,7 @@ const ProfileEditor: React.FC<ProfileEditorProps> = ({ onBack }) => {
           </div>
           <div className="form-actions">
             <button className="button-primary" type="submit" disabled={saving}>
-              {saving ? 'Saving...' : 'Save Profile'}
+              {saving ? '保存中...' : 'プロフィールを保存'}
             </button>
           </div>
         </form>

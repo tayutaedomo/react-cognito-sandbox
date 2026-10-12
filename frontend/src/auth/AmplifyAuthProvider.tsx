@@ -21,8 +21,9 @@ import { AuthContext } from './AuthContext';
 import { setUpTOTP, verifyTOTPSetup, updateMFAPreference } from 'aws-amplify/auth';
 import { createMfaService } from './mfaService';
 import { createDeviceService } from './deviceService';
-import { fetchOwnDevices } from './diagnostics';
+import { fetchOwnDevices, mutateOwnDevice, clearDeletedDeviceStorage } from './diagnostics';
 import type { User } from './AuthContext';
+import { sessionUser } from './sessionUser';
 
 const mfa = createMfaService(
   {
@@ -34,7 +35,10 @@ const mfa = createMfaService(
     verifyTOTPSetup,
     updateMFAPreference,
   },
-  { emailAvailable: import.meta.env.VITE_EMAIL_MFA_ENABLED === 'true' },
+  {
+    emailAvailable: import.meta.env.VITE_EMAIL_MFA_ENABLED === 'true',
+    smsAvailable: import.meta.env.VITE_SMS_MFA_ENABLED === 'true',
+  },
 );
 const deviceAuth = createDeviceService({
   signIn: amplifySignIn,
@@ -44,6 +48,15 @@ const deviceAuth = createDeviceService({
     const session = await fetchAuthSession();
     const token = session.tokens?.idToken?.toString();
     return fetchOwnDevices(import.meta.env.VITE_API_ENDPOINT, token);
+  },
+  async untrustDevice(id) {
+    const session = await fetchAuthSession();
+    await mutateOwnDevice(import.meta.env.VITE_API_ENDPOINT, session.tokens?.idToken?.toString(), id, 'untrust');
+  },
+  async deleteDevice(id) {
+    const session = await fetchAuthSession();
+    await mutateOwnDevice(import.meta.env.VITE_API_ENDPOINT, session.tokens?.idToken?.toString(), id, 'delete');
+    clearDeletedDeviceStorage(id, window.localStorage);
   },
   fetchAuthSession,
   rememberDevice,
@@ -84,11 +97,7 @@ export const AmplifyAuthProvider = ({ children }: { children: ReactNode }) => {
       const currentUser = await getCurrentUser();
       const session = await fetchAuthSession();
 
-      setUser({
-        username: currentUser.userId,
-        email: currentUser.signInDetails?.loginId || '',
-        token: session.tokens?.idToken?.toString() || '',
-      });
+      setUser(sessionUser(currentUser, session));
     } catch {
       setUser(null);
     }

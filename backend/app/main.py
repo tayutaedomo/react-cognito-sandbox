@@ -47,7 +47,7 @@ async def request_lifecycle_middleware(request, call_next):
         extra={
             "http": {
                 "method": request.method,
-                "path": request.url.path,
+                "path": getattr(request.scope.get("route"), "path", request.url.path),
                 "status_code": response.status_code,
                 "client_ip": request.client.host if request.client else None,
             }

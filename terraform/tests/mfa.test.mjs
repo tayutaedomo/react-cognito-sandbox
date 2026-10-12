@@ -14,6 +14,12 @@ after(() => rmSync(fixture, { recursive: true, force: true }));
 const source = readFileSync(join(appDir, 'main.tf'), 'utf8');
 const pool = source.match(/^resource "aws_cognito_user_pool" "main" \{[\s\S]*?^\}/m)?.[0];
 assert.ok(pool, 'User Pool resource must exist');
+const smsResources = [
+  ...source.matchAll(/^resource "(?:aws_iam_role|aws_iam_role_policy|random_uuid)" "cognito_sms" \{[\s\S]*?^\}/gm),
+]
+  .map((match) => match[0])
+  .join('\n')
+  .replaceAll('data.aws_caller_identity.current.account_id', '"123456789012"');
 copyFileSync(join(appDir, 'variables.tf'), join(fixture, 'variables.tf'));
 copyFileSync(join(appDir, '.terraform.lock.hcl'), join(fixture, '.terraform.lock.hcl'));
 symlinkSync(join(appDir, '.terraform'), join(fixture, '.terraform'), 'dir');
@@ -22,6 +28,10 @@ writeFileSync(
   `
 terraform {
   required_providers {
+    random = {
+      source = "hashicorp/random"
+      version = "~> 3.0"
+    }
     aws = {
       source = "hashicorp/aws"
       version = "~> 5.0"
@@ -38,6 +48,7 @@ provider "aws" {
   skip_requesting_account_id = true
 }
 ${pool}
+${smsResources}
 `,
 );
 
@@ -151,4 +162,54 @@ test('SES and admin-only recovery can be applied before email MFA', () => {
   assert.equal(values.account_recovery_setting[0].recovery_mechanism[0].name, 'admin_only');
   assert.equal(values.email_mfa_configuration.length, 0);
   assert.equal(values.software_token_mfa_configuration[0].enabled, true);
+});
+
+const smsVars = { ...emailVars, sms_mfa_enabled: true };
+test('SMS adds a Tokyo SNS configuration without removing email, TOTP or recovery', () => {
+  const result = plan(smsVars);
+  assert.equal(result.status, 0, result.stderr + result.stdout);
+  const shown = terraform(['show', '-json', 'plan.tfplan']);
+  const resources = JSON.parse(shown.stdout).planned_values.root_module.resources;
+  const pool = resources.find((resource) => resource.type === 'aws_cognito_user_pool').values;
+  assert.equal(pool.sms_configuration[0].sns_region, 'ap-northeast-1');
+  assert.match(pool.sms_authentication_message, /\{####\}/);
+  assert.equal(pool.email_mfa_configuration.length, 1);
+  assert.equal(pool.software_token_mfa_configuration[0].enabled, true);
+  assert.equal(pool.account_recovery_setting[0].recovery_mechanism[0].name, 'admin_only');
+  assert.equal(resources.filter((resource) => resource.name === 'cognito_sms').length, 3);
+  const policy = JSON.parse(resources.find((resource) => resource.type === 'aws_iam_role_policy').values.policy);
+  assert.deepEqual(policy.Statement, [{ Action: 'sns:Publish', Effect: 'Allow', Resource: '*' }]);
+});
+for (const [key, value] of [
+  ['mfa_configuration', 'OFF'],
+  ['account_recovery_mode', 'verified_email'],
+]) {
+  test(`SMS rejects incompatible ${key}`, () => {
+    const result = plan({
+      mfa_configuration: 'OPTIONAL',
+      account_recovery_mode: 'admin_only',
+      sms_mfa_enabled: true,
+      [key]: value,
+    });
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr + result.stdout, /SMS MFA requires/);
+  });
+}
+test('SMS alone is a valid factor for OPTIONAL MFA', () => {
+  const result = plan({ mfa_configuration: 'OPTIONAL', sms_mfa_enabled: true, account_recovery_mode: 'admin_only' });
+  assert.equal(result.status, 0, result.stderr + result.stdout);
+});
+test('SMS resources are absent by default', () => {
+  const result = plan();
+  assert.equal(result.status, 0, result.stderr + result.stdout);
+  const shown = terraform(['show', '-json', 'plan.tfplan']);
+  const resources = JSON.parse(shown.stdout).planned_values.root_module.resources;
+  assert.equal(
+    resources.some((resource) => resource.name === 'cognito_sms'),
+    false,
+  );
+  assert.equal(
+    (resources.find((resource) => resource.type === 'aws_cognito_user_pool').values.sms_configuration ?? []).length,
+    0,
+  );
 });

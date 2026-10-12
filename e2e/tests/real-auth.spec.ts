@@ -47,10 +47,10 @@ test.describe('Real Cognito Authentication Flow', () => {
     await page.screenshot({ path: 'test-results/screenshots/real-03-after-callback.png' });
 
     // 5. ログイン成功後の画面確認
-    await expect(page.locator('text=Sign Out')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('text=サインアウト')).toBeVisible({ timeout: 10000 });
 
     // 6. ユーザー情報 (API Gateway 経由) の取得確認
-    await page.click('button:has-text("Fetch Users")');
+    await page.click('button:has-text("ユーザー一覧を取得")');
 
     // "test@example.com" など、実際の Cognito に存在するユーザーが画面に描画されるはず
     await expect(page.locator('ul')).toContainText(testEmail, { timeout: 10000 });

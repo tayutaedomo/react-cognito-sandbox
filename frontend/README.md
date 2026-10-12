@@ -94,4 +94,6 @@ Vitest 自体が AWS 通信を自動的に禁止したり、Cognito を再現し
 単体テストの成功だけでは Cognito の実際の動作は確認できません。
 メール MFA の設定と SRP 方式選択は [メール MFA POC](../docs/poc/010-email-mfa-sandbox.md)、プール全体とユーザー個別の制約は [MFA と復旧](../docs/mfa-and-recovery.md) を参照してください。
 
+SMS MFA の番号確認・3方式選択・配送準備は [SMS MFA POC](../docs/poc/011-sms-mfa-sandbox.md) を参照してください。メールと SMS の属性確認フォームは `ContactMfa` を共用します。
+
 ログイン後の MFA 設定画面の操作と実環境検証は [任意 MFA の検証手順](../docs/poc/006-optional-mfa.md) を参照してください。

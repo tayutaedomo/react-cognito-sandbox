@@ -80,3 +80,34 @@ export async function fetchOwnDevices(
   if (!response.ok) throw new Error('Device information unavailable');
   return mapAdminDevices(await response.json());
 }
+
+export async function mutateOwnDevice(
+  endpoint: string | undefined,
+  token: string | undefined,
+  id: string,
+  operation: 'untrust' | 'delete',
+  request: typeof fetch = fetch,
+) {
+  if (!endpoint || !token || !id) throw new Error('Authenticated device configuration required');
+  const response = await request(
+    `${endpoint}/api/me/devices/${encodeURIComponent(id)}${operation === 'untrust' ? '/untrust' : ''}`,
+    {
+      method: operation === 'untrust' ? 'POST' : 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+      cache: 'no-store',
+    },
+  );
+  if (!response.ok) throw new Error('Device operation unavailable');
+}
+
+export function clearDeletedDeviceStorage(
+  id: string,
+  storage: Pick<Storage, 'length' | 'key' | 'getItem' | 'removeItem'>,
+) {
+  // 削除したキーに対応する3項目だけを消す。他ユーザー・トークンは維持する。
+  const prefixes = readStorage(storage)
+    .filter((item) => /\.deviceKey$/.test(item.key) && item.value === id)
+    .map((item) => item.key.slice(0, -'deviceKey'.length));
+  for (const prefix of prefixes)
+    for (const suffix of ['deviceKey', 'deviceGroupKey', 'randomPasswordKey']) storage.removeItem(prefix + suffix);
+}

@@ -38,7 +38,7 @@ AWS Lambda Web Adapter を利用した Dockerfile が用意されており、ロ
 単体テストはモックと Moto を利用し、AWS 上のリソースに依存せず実行できます。
 
 ```bash
-uv run pytest
+uv run python -m pytest
 uv run ruff check --fix
 uv run ruff format
 ```
@@ -51,3 +51,5 @@ AWS へのデプロイには `scripts/deploy.sh` を使用します。（事前�
 ./scripts/deploy.sh
 ```
 これにより、Docker イメージのビルドと Amazon ECR への Push が行われ、既に Lambda が存在する場合はそのコードも更新されます。
+
+本人限定デバイス API は `GET /api/me/devices`（一覧）、`POST /api/me/devices/{device_key}/untrust`（信頼解除）、`DELETE /api/me/devices/{device_key}`（登録削除）です。実環境では Lambda Web Adapter が転送する API Gateway の検証済みユーザー情報を使用します。クライアントがユーザー名を指定することはできません。詳細は [保存先と実装](../docs/trusted-device-implementation.md#登録信頼削除の違い) を参照してください。

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useAuth } from './auth/AuthContext';
 import ProfileEditor from './components/ProfileEditor';
 import MfaSettings from './components/MfaSettings';
@@ -7,6 +7,9 @@ import DevicePoc from './components/DevicePoc';
 function MainApp() {
   const { user, signIn, signOut, isLoading } = useAuth();
   const [users, setUsers] = useState<any[]>([]);
+  const [pending, setPending] = useState<'signIn' | 'signOut' | 'users' | null>(null);
+  const actionInProgress = useRef(false);
+  const busy = isLoading || pending !== null;
   const [error, setError] = useState<string | null>(null);
   const [currentView, setCurrentView] = useState<'home' | 'profile' | 'mfa' | 'device-poc'>('home');
 
@@ -14,25 +17,31 @@ function MainApp() {
     return <DevicePoc onBack={() => setCurrentView('home')} />;
   }
 
-  const fetchUsers = async () => {
-    if (!user) return;
+  async function runAction(action: 'signIn' | 'signOut' | 'users', operation: () => unknown) {
+    if (isLoading || actionInProgress.current) return;
+    actionInProgress.current = true;
+    setPending(action);
     setError(null);
     try {
+      await operation();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : '操作を完了できませんでした。');
+    } finally {
+      actionInProgress.current = false;
+      setPending(null);
+    }
+  }
+
+  const fetchUsers = () =>
+    runAction('users', async () => {
+      if (!user) return;
       const apiEndpoint = import.meta.env.VITE_API_ENDPOINT || 'http://localhost:8000';
       const response = await fetch(`${apiEndpoint}/api/users`, {
-        headers: {
-          Authorization: `Bearer ${user.token}`,
-        },
+        headers: { Authorization: `Bearer ${user.token}` },
       });
-      if (!response.ok) {
-        throw new Error(`Error: ${response.status} ${response.statusText}`);
-      }
-      const data = await response.json();
-      setUsers(data);
-    } catch (err: any) {
-      setError(err.message);
-    }
-  };
+      if (!response.ok) throw new Error(`Error: ${response.status} ${response.statusText}`);
+      setUsers(await response.json());
+    });
 
   if (user && currentView === 'mfa') {
     return <MfaSettings onBack={() => setCurrentView('home')} />;
@@ -48,6 +57,16 @@ function MainApp() {
         <h1>React + Cognito POC</h1>
       </header>
 
+      {error && (
+        <p className="feedback feedback--error" role="alert">
+          {error}
+        </p>
+      )}
+      {busy && (
+        <p className="feedback feedback--busy" role="status">
+          {pending === 'users' ? 'ユーザー一覧を取得中...' : '認証処理中...'}
+        </p>
+      )}
       {!user ? (
         <section className="panel">
           <p>
@@ -55,33 +74,53 @@ function MainApp() {
             画面へ進んでください。
           </p>
           <div className="landing-actions">
-            <button className="button-primary" onClick={signIn} disabled={isLoading}>
-              {isLoading ? '処理中...' : 'ログイン / 登録 / パスワード再設定 (Managed Login)'}
+            <button
+              className="button-primary"
+              onClick={() => {
+                void runAction('signIn', signIn);
+              }}
+              disabled={busy}
+            >
+              {busy ? '処理中...' : 'ログイン / 登録 / パスワード再設定 (Managed Login)'}
             </button>
-            <button onClick={() => setCurrentView('device-poc')}>メールアドレスでログイン（SRP）</button>
+            <button disabled={busy} onClick={() => setCurrentView('device-poc')}>
+              メールアドレスでログイン（SRP）
+            </button>
           </div>
         </section>
       ) : (
         <>
           <section className="panel">
-            <p className="welcome">Welcome, {user.email}!</p>
+            <div className="account-header">
+              <div className="account-identity">
+                <p className="account-label">サインイン中</p>
+                <p className="welcome">{user.email || user.username}</p>
+              </div>
+              <button
+                className="button-link account-signout"
+                disabled={busy}
+                onClick={() => {
+                  void runAction('signOut', signOut);
+                }}
+              >
+                サインアウト
+              </button>
+            </div>
             <div className="action-row">
-              <button onClick={() => setCurrentView('profile')}>Edit Profile</button>
-              <button onClick={signOut}>Sign Out</button>
-              <button onClick={() => setCurrentView('mfa')}>MFA 設定</button>
+              <button disabled={busy} onClick={() => setCurrentView('profile')}>
+                プロフィール編集
+              </button>
+              <button disabled={busy} onClick={() => setCurrentView('mfa')}>
+                MFA 設定
+              </button>
             </div>
           </section>
 
           <section className="panel">
-            <h2>Users API</h2>
-            <button className="button-primary" onClick={fetchUsers}>
-              Fetch Users
+            <h2>ユーザー一覧</h2>
+            <button className="button-primary" disabled={busy} onClick={fetchUsers}>
+              {pending === 'users' ? '取得中...' : 'ユーザー一覧を取得'}
             </button>
-            {error && (
-              <p className="feedback feedback--error" role="alert">
-                {error}
-              </p>
-            )}
             {users.length > 0 && (
               <ul className="user-list">
                 {users.map((u: any) => (

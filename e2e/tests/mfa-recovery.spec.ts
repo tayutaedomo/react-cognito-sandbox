@@ -48,7 +48,7 @@ test.describe('TOTP recovery and existing sessions', () => {
 
     async function signedIn(page: Page) {
       await page.waitForURL(`${baseURL}/**`);
-      await expect(page.getByRole('button', { name: 'Sign Out', exact: true })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'サインアウト', exact: true })).toBeVisible();
       return page;
     }
 

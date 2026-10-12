@@ -37,7 +37,7 @@ flowchart TD
     User -->|Access| App
     App -->|Sign In Request| Amplify
     Amplify <-->|Redirect & OAuth Flow| Cognito
-    Amplify <-->|Access token / TOTP settings| Cognito
+    Amplify <-->|Access token / MFA settings| Cognito
     App -->|API Request w/ JWT| APIGW
     APIGW -->|Verify Token| Authorizer
     Authorizer -.->|Validate| Cognito
@@ -56,12 +56,14 @@ flowchart TD
 - API Gateway の JWT Authorizer が認証を担い、FastAPI は Lambda Web Adapter 経由で動作します。
 - `GET /api/health` と CORS プリフライト用の `OPTIONS /api/{proxy+}` は、JWT 認証を要求しないルートとして定義されています。
 - バックエンドは IAM ロールの権限で Cognito の `ListUsers` を呼び出します。ユーザー情報は Cognito 内で管理します。
+- `POST /api/me/devices/{device_key}/untrust` は本人の信頼状態だけを解除し、`DELETE /api/me/devices/{device_key}` は本人の登録を削除します。本人の識別は API Gateway の検証済み情報から行います。
 - `GET /api/me/devices` は検証済み本人のデバイスだけを `AdminListDevices` で取得し、信頼状態と各属性を返します。
 
 ### MFA の設定
 
 - MFA は Terraform で `OFF` / `OPTIONAL` / `ON` と TOTP を設定可能です。デフォルトは無効で、必須・任意それぞれの POC 用設定例を用意しています。
-- メール MFA は SES の本人確認済み Identity を利用し、ユーザーごとに TOTP とメールを有効化・優先設定します。最小 POC の復旧方針は管理者対応です。[MFA と復旧の組み合わせ](./mfa-and-recovery.md) を参照してください。
+- メール MFA は SES の本人確認済み Identity を利用し、ユーザーごとに TOTP・メール・SMS を有効化・優先設定します。最小 POC の復旧方針は管理者対応です。[MFA と復旧の組み合わせ](./mfa-and-recovery.md) を参照してください。
+- SMS MFA は東京の SNS 経由で配送します。Cognito 用の送信 IAM ロールを Terraform で管理し、サンドボックスでは確認済み番号だけを使用します。[POC 011](./poc/011-sms-mfa-sandbox.md) を参照してください。
 - 任意 MFA では、ログイン後の「MFA 設定」画面から Amplify Auth と Access トークンを使い、TOTP 登録・有効化・無効化を行います。QR はブラウザ内で生成します。バックエンドの管理者 API は使用しません。
 - 必須 MFA の検証は [POC 005](./poc/005-mfa-foundation.md)、任意 MFA の操作・検証は [POC 006](./poc/006-optional-mfa.md) を参照してください。
 

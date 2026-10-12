@@ -1,11 +1,12 @@
-"""本人限定のデバイス一覧。API Gateway が検証した claims のみを使用する。"""
+"""本人限定のデバイス一覧と信頼解除・登録削除。API Gateway が検証した claims のみを使用する。"""
 
 import json
 import os
+from typing import Annotated
 
 import boto3
 from botocore.exceptions import ClientError
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Path, Request, Response
 
 router = APIRouter()
 
@@ -36,6 +37,21 @@ class DeviceRepository:
     def __init__(self, client, pool_id):
         self.client = client
         self.pool_id = pool_id
+
+    def untrust_device(self, username: str, device_key: str) -> None:
+        self.client.admin_update_device_status(
+            UserPoolId=self.pool_id,
+            Username=username,
+            DeviceKey=device_key,
+            DeviceRememberedStatus="not_remembered",
+        )
+
+    def delete_device(self, username: str, device_key: str) -> None:
+        self.client.admin_forget_device(
+            UserPoolId=self.pool_id,
+            Username=username,
+            DeviceKey=device_key,
+        )
 
     def list_devices(self, username: str) -> dict:
         devices = []
@@ -73,3 +89,41 @@ def own_devices(
     except ClientError:
         # AWS の詳細応答やデバイス情報をログ・エラーへ含めない。
         raise HTTPException(502, "Device information unavailable") from None
+
+
+DeviceKey = Annotated[str, Path(pattern=r"^[\w-]+_[0-9a-f-]+$", max_length=55)]
+
+
+def mutate_device(username: str, device_key: str, delete: bool) -> Response:
+    if os.getenv("USE_MOCK_COGNITO", "1") == "1":
+        # モックの状態は frontend で保持する。ローカル API は実 AWS を変更しない。
+        raise HTTPException(404, "Device unavailable")
+    try:
+        repository = get_device_repository()
+        if delete:
+            repository.delete_device(username, device_key)
+        else:
+            repository.untrust_device(username, device_key)
+    except ClientError as error:
+        status = (
+            404
+            if error.response.get("Error", {}).get("Code")
+            == "ResourceNotFoundException"
+            else 502
+        )
+        raise HTTPException(status, "Device operation unavailable") from None
+    return Response(status_code=204, headers={"Cache-Control": "no-store"})
+
+
+@router.post("/api/me/devices/{device_key}/untrust", status_code=204)
+def untrust_own_device(
+    device_key: DeviceKey, username: str = Depends(current_device_username)
+):
+    return mutate_device(username, device_key, delete=False)
+
+
+@router.delete("/api/me/devices/{device_key}", status_code=204)
+def delete_own_device(
+    device_key: DeviceKey, username: str = Depends(current_device_username)
+):
+    return mutate_device(username, device_key, delete=True)

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { AuthContext } from './AuthContext';
 import type { User } from './AuthContext';
-import { createMfaService } from './mfaService';
+import { createMfaService, mfaMethods } from './mfaService';
 import { createDeviceService } from './deviceService';
 
 interface Props {
@@ -17,14 +17,24 @@ export function MockAuthProvider({ children }: Props) {
       registered: false,
       enabled: false,
       emailEnabled: false,
+      smsEnabled: false,
+      phoneVerified: false,
+      phoneNumber: '+819012345678',
       preferred: undefined as string | undefined,
       emailVerified: true,
       challenge: 'TOTP' as string,
       remembered: false,
+      deviceRegistered: false,
       signedIn: false,
     };
     return {
       get: () => model,
+      updatePhone: (phone?: string) => {
+        if (phone && phone !== model.phoneNumber) {
+          model.phoneNumber = phone;
+          model.phoneVerified = false;
+        }
+      },
       signOut: () => {
         model.signedIn = false;
       },
@@ -35,7 +45,11 @@ export function MockAuthProvider({ children }: Props) {
     return createMfaService({
       async fetchMFAPreference() {
         return {
-          enabled: [...(model.enabled ? ['TOTP'] : []), ...(model.emailEnabled ? ['EMAIL'] : [])],
+          enabled: [
+            ...(model.enabled ? ['TOTP'] : []),
+            ...(model.emailEnabled ? ['EMAIL'] : []),
+            ...(model.smsEnabled ? ['SMS'] : []),
+          ],
           preferred: model.preferred,
         };
       },
@@ -56,24 +70,32 @@ export function MockAuthProvider({ children }: Props) {
         for (const [key, method] of [
           ['totp', 'TOTP'],
           ['email', 'EMAIL'],
+          ['sms', 'SMS'],
         ] as const) {
           const value = input[key];
           if (!value) continue;
           if (key === 'totp') model.enabled = value !== 'DISABLED';
-          else model.emailEnabled = value !== 'DISABLED';
+          else if (key === 'email') model.emailEnabled = value !== 'DISABLED';
+          else model.smsEnabled = value !== 'DISABLED';
           if (value === 'PREFERRED') model.preferred = method;
           else if (model.preferred === method && (value === 'NOT_PREFERRED' || value === 'DISABLED'))
             model.preferred = undefined;
         }
       },
       async fetchUserAttributes() {
-        return { email: 'mock@example.com', email_verified: String(model.emailVerified) };
+        return {
+          email: 'mock@example.com',
+          email_verified: String(model.emailVerified),
+          phone_number: model.phoneNumber,
+          phone_number_verified: String(model.phoneVerified),
+        };
       },
       async sendUserAttributeVerificationCode() {},
-      async confirmUserAttribute({ confirmationCode }) {
+      async confirmUserAttribute({ confirmationCode, userAttributeKey }) {
         if (confirmationCode !== '123456')
           throw Object.assign(new Error('Mock mismatch'), { name: 'CodeMismatchException' });
-        model.emailVerified = true;
+        if (userAttributeKey === 'email') model.emailVerified = true;
+        else model.phoneVerified = true;
       },
     });
   });
@@ -94,59 +116,69 @@ export function MockAuthProvider({ children }: Props) {
           }
         : undefined,
     });
+    const challengeStep = (method: string) => ({
+      isSignedIn: false,
+      nextStep: {
+        signInStep:
+          method === 'SMS'
+            ? 'CONFIRM_SIGN_IN_WITH_SMS_CODE'
+            : method === 'EMAIL'
+              ? 'CONFIRM_SIGN_IN_WITH_EMAIL_CODE'
+              : 'CONFIRM_SIGN_IN_WITH_TOTP_CODE',
+        codeDeliveryDetails: { destination: method === 'SMS' ? '+********5678' : 'm***@e***' },
+      },
+    });
     return createDeviceService({
       async signIn() {
-        if (model.remembered || (!model.enabled && !model.emailEnabled)) {
+        const enabled = mfaMethods.filter((method) =>
+          method === 'TOTP' ? model.enabled : method === 'EMAIL' ? model.emailEnabled : model.smsEnabled,
+        );
+        if (model.remembered || !enabled.length) {
           model.signedIn = true;
+          model.deviceRegistered = true;
           return { isSignedIn: true, nextStep: { signInStep: 'DONE' } };
         }
-        if (model.enabled && model.emailEnabled && !model.preferred) {
+        if (enabled.length >= 2 && !model.preferred) {
           model.challenge = 'selection';
           return {
             isSignedIn: false,
-            nextStep: { signInStep: 'CONTINUE_SIGN_IN_WITH_MFA_SELECTION', allowedMFATypes: ['TOTP', 'EMAIL'] },
+            nextStep: { signInStep: 'CONTINUE_SIGN_IN_WITH_MFA_SELECTION', allowedMFATypes: enabled },
           };
         }
-        model.challenge = model.preferred ?? (model.emailEnabled ? 'EMAIL' : 'TOTP');
-        return {
-          isSignedIn: false,
-          nextStep: {
-            signInStep:
-              model.challenge === 'EMAIL' ? 'CONFIRM_SIGN_IN_WITH_EMAIL_CODE' : 'CONFIRM_SIGN_IN_WITH_TOTP_CODE',
-            codeDeliveryDetails: { destination: 'm***@e***' },
-          },
-        };
+        model.challenge = model.preferred ?? enabled[0];
+        return challengeStep(model.challenge);
       },
       async confirmSignIn({ challengeResponse }) {
         if (model.challenge === 'selection') {
-          if (!['TOTP', 'EMAIL'].includes(challengeResponse)) throw new Error('Unavailable method');
+          if (!mfaMethods.includes(challengeResponse as (typeof mfaMethods)[number]))
+            throw new Error('Unavailable method');
           model.challenge = challengeResponse;
-          return {
-            isSignedIn: false,
-            nextStep: {
-              signInStep:
-                challengeResponse === 'EMAIL' ? 'CONFIRM_SIGN_IN_WITH_EMAIL_CODE' : 'CONFIRM_SIGN_IN_WITH_TOTP_CODE',
-              codeDeliveryDetails: { destination: 'm***@e***' },
-            },
-          };
+          return challengeStep(model.challenge);
         }
         if (challengeResponse !== '123456')
-          throw Object.assign(new Error('Mismatch'), { name: 'NotAuthorizedException' });
+          throw Object.assign(new Error('Mismatch'), { name: 'CodeMismatchException' });
         model.signedIn = true;
+        model.deviceRegistered = true;
         return { isSignedIn: true, nextStep: { signInStep: 'DONE' } };
       },
       async fetchMFAPreference() {
-        return { enabled: [...(model.enabled ? ['TOTP'] : []), ...(model.emailEnabled ? ['EMAIL'] : [])] };
+        return {
+          enabled: [
+            ...(model.enabled ? ['TOTP'] : []),
+            ...(model.emailEnabled ? ['EMAIL'] : []),
+            ...(model.smsEnabled ? ['SMS'] : []),
+          ],
+        };
       },
       async fetchDevices() {
-        return model.remembered
+        return model.deviceRegistered
           ? [
               {
                 id: 'mock-device',
                 name: 'Mock device',
                 attributes: {
                   device_status: 'valid',
-                  'dev:device_remembered_status': 'remembered',
+                  'dev:device_remembered_status': model.remembered ? 'remembered' : 'not_remembered',
                 },
               },
             ]
@@ -155,11 +187,20 @@ export function MockAuthProvider({ children }: Props) {
       async fetchAuthSession() {
         return mockSession();
       },
+      async untrustDevice() {
+        model.remembered = false;
+      },
+      async deleteDevice() {
+        model.remembered = false;
+        model.deviceRegistered = false;
+      },
       async rememberDevice() {
+        model.deviceRegistered = true;
         model.remembered = true;
       },
       async forgetDevice() {
         model.remembered = false;
+        model.deviceRegistered = false;
       },
     });
   });
@@ -191,10 +232,11 @@ export function MockAuthProvider({ children }: Props) {
   };
 
   const getAttributes = async () => {
-    return { ...mockAttributes };
+    return { ...mockAttributes, phone_number: model.phoneNumber, phone_number_verified: String(model.phoneVerified) };
   };
 
   const updateAttributes = async (attributes: Record<string, string>) => {
+    getModel.updatePhone(attributes.phone_number);
     setMockAttributes((prev) => ({ ...prev, ...attributes }));
   };
 

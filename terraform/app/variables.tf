@@ -86,3 +86,9 @@ variable "waf_enabled" {
   type        = bool
   default     = false
 }
+
+variable "sms_mfa_enabled" {
+  description = "Enable SMS MFA through Amazon SNS in ap-northeast-1"
+  type        = bool
+  default     = false
+}

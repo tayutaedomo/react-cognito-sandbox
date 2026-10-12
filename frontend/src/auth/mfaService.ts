@@ -1,10 +1,11 @@
-export type MfaMethod = 'TOTP' | 'EMAIL';
+export type MfaMethod = 'TOTP' | 'EMAIL' | 'SMS';
 export type MfaSetting = 'ENABLED' | 'DISABLED' | 'PREFERRED' | 'NOT_PREFERRED';
 
 export interface MfaPreference {
   enabled: boolean;
   preferred: boolean;
   emailEnabled: boolean;
+  smsEnabled: boolean;
   preferredMethod?: string;
   raw?: { enabled?: string[]; preferred?: string };
 }
@@ -18,18 +19,26 @@ interface MfaApi {
   fetchMFAPreference: () => Promise<{ enabled?: string[]; preferred?: string }>;
   setUpTOTP: () => Promise<{ sharedSecret: string; getSetupUri: (appName: string) => URL }>;
   verifyTOTPSetup: (input: { code: string }) => Promise<void>;
-  updateMFAPreference: (input: { totp?: MfaSetting; email?: MfaSetting }) => Promise<void>;
+  updateMFAPreference: (input: { totp?: MfaSetting; email?: MfaSetting; sms?: MfaSetting }) => Promise<void>;
   fetchUserAttributes: () => Promise<Record<string, string | undefined>>;
-  sendUserAttributeVerificationCode: (input: { userAttributeKey: 'email' }) => Promise<unknown>;
-  confirmUserAttribute: (input: { userAttributeKey: 'email'; confirmationCode: string }) => Promise<void>;
+  sendUserAttributeVerificationCode: (input: { userAttributeKey: 'email' | 'phone_number' }) => Promise<unknown>;
+  confirmUserAttribute: (input: {
+    userAttributeKey: 'email' | 'phone_number';
+    confirmationCode: string;
+  }) => Promise<void>;
 }
 
 export interface MfaService {
   emailAvailable: boolean;
+  smsAvailable: boolean;
   getPreference: () => Promise<MfaPreference>;
   startSetup: () => Promise<TotpSetup>;
   verifySetup: (code: string) => Promise<void>;
-  setEnabled: (enabled: boolean) => Promise<void>;
+  setTotpEnabled: (enabled: boolean) => Promise<void>;
+  setSmsEnabled: (enabled: boolean) => Promise<void>;
+  getPhone: () => Promise<{ address?: string; verified: boolean }>;
+  sendPhoneVerification: () => Promise<void>;
+  verifyPhone: (code: string) => Promise<void>;
   setEmailEnabled: (enabled: boolean) => Promise<void>;
   setPreferred: (method: MfaMethod | null) => Promise<void>;
   getEmail: () => Promise<{ address?: string; verified: boolean }>;
@@ -37,37 +46,53 @@ export interface MfaService {
   verifyEmail: (code: string) => Promise<void>;
 }
 
-export function createMfaService(api: MfaApi, options = { emailAvailable: true }): MfaService {
+const methodKeys = { TOTP: 'totp', EMAIL: 'email', SMS: 'sms' } as const;
+export const mfaMethods: MfaMethod[] = ['TOTP', 'EMAIL', 'SMS'];
+export const mfaMethodLabels: Record<MfaMethod, string> = { TOTP: '認証アプリ', EMAIL: 'メール', SMS: 'SMS' };
+
+export function createMfaService(
+  api: MfaApi,
+  options: { emailAvailable: boolean; smsAvailable?: boolean } = { emailAvailable: true, smsAvailable: true },
+): MfaService {
   async function toggle(method: MfaMethod, enabled: boolean) {
-    if (method === 'EMAIL' && enabled) {
-      if (!options.emailAvailable)
-        throw Object.assign(new Error('Email MFA unavailable'), { name: 'EmailMfaUnavailable' });
+    if (method !== 'TOTP' && enabled) {
+      const isEmail = method === 'EMAIL';
+      if (!(isEmail ? options.emailAvailable : options.smsAvailable === true))
+        throw Object.assign(new Error('MFA unavailable'), {
+          name: isEmail ? 'EmailMfaUnavailable' : 'SmsMfaUnavailable',
+        });
       const attributes = await api.fetchUserAttributes();
-      if (!attributes.email || attributes.email_verified !== 'true') {
-        throw Object.assign(new Error('Verify email first'), { name: 'UnverifiedMfaEmail' });
+      const key = isEmail ? 'email' : 'phone_number';
+      if (!attributes[key] || attributes[`${key}_verified`] !== 'true') {
+        throw Object.assign(new Error('Verify contact first'), {
+          name: isEmail ? 'UnverifiedMfaEmail' : 'UnverifiedMfaPhone',
+        });
       }
     }
     const preference = await api.fetchMFAPreference();
-    const other: MfaMethod = method === 'TOTP' ? 'EMAIL' : 'TOTP';
-    const otherEnabled = preference.enabled?.includes(other) ?? false;
-    const input: { totp?: MfaSetting; email?: MfaSetting } = {};
-    input[method === 'TOTP' ? 'totp' : 'email'] = enabled
-      ? !otherEnabled || preference.preferred === method
+    const remaining = mfaMethods.filter((value) => value !== method && preference.enabled?.includes(value));
+    const input: { totp?: MfaSetting; email?: MfaSetting; sms?: MfaSetting } = {};
+    input[methodKeys[method]] = enabled
+      ? !remaining.length || preference.preferred === method
         ? 'PREFERRED'
         : 'ENABLED'
       : 'DISABLED';
-    // 残る方式が1つになった場合は、その方式を優先にする。
-    if (!enabled && otherEnabled) input[other === 'TOTP' ? 'totp' : 'email'] = 'PREFERRED';
+    if (!enabled && remaining.length === 1) input[methodKeys[remaining[0]]] = 'PREFERRED';
+    // 優先していた方式を外し、2方式以上が残る場合はユーザーに選んでもらう。
+    if (!enabled && remaining.length > 1 && preference.preferred === method)
+      for (const value of remaining) input[methodKeys[value]] = 'NOT_PREFERRED';
     await api.updateMFAPreference(input);
   }
   return {
     emailAvailable: options.emailAvailable,
+    smsAvailable: options.smsAvailable === true,
     async getPreference() {
       const preference = await api.fetchMFAPreference();
       return {
         enabled: preference.enabled?.includes('TOTP') ?? false,
         preferred: preference.preferred === 'TOTP',
         emailEnabled: preference.enabled?.includes('EMAIL') ?? false,
+        smsEnabled: preference.enabled?.includes('SMS') ?? false,
         preferredMethod: preference.preferred,
         raw: preference,
       };
@@ -108,21 +133,34 @@ export function createMfaService(api: MfaApi, options = { emailAvailable: true }
       if (!/^[0-9]{6}$/.test(code.trim())) throw Object.assign(new Error('Invalid code'), { name: 'InvalidTotpCode' });
       await api.confirmUserAttribute({ userAttributeKey: 'email', confirmationCode: code.trim() });
     },
+    async getPhone() {
+      const attributes = await api.fetchUserAttributes();
+      return { address: attributes.phone_number, verified: attributes.phone_number_verified === 'true' };
+    },
+    async sendPhoneVerification() {
+      await api.sendUserAttributeVerificationCode({ userAttributeKey: 'phone_number' });
+    },
+    async verifyPhone(code) {
+      if (!/^[0-9]{6}$/.test(code.trim())) throw Object.assign(new Error('Invalid code'), { name: 'InvalidTotpCode' });
+      await api.confirmUserAttribute({ userAttributeKey: 'phone_number', confirmationCode: code.trim() });
+    },
+    async setSmsEnabled(enabled) {
+      await toggle('SMS', enabled);
+    },
     async setEmailEnabled(enabled) {
       await toggle('EMAIL', enabled);
     },
     async setPreferred(method) {
       const preference = await api.fetchMFAPreference();
-      const methods = (['TOTP', 'EMAIL'] as const).filter((value) => preference.enabled?.includes(value));
+      const methods = mfaMethods.filter((value) => preference.enabled?.includes(value));
       if ((method && !methods.includes(method)) || (!method && methods.length < 2)) {
         throw Object.assign(new Error('Select an enabled method'), { name: 'InvalidMfaPreference' });
       }
-      const input: { totp?: MfaSetting; email?: MfaSetting } = {};
-      for (const value of methods)
-        input[value === 'TOTP' ? 'totp' : 'email'] = value === method ? 'PREFERRED' : 'NOT_PREFERRED';
+      const input: { totp?: MfaSetting; email?: MfaSetting; sms?: MfaSetting } = {};
+      for (const value of methods) input[methodKeys[value]] = value === method ? 'PREFERRED' : 'NOT_PREFERRED';
       await api.updateMFAPreference(input);
     },
-    async setEnabled(enabled) {
+    async setTotpEnabled(enabled) {
       await toggle('TOTP', enabled);
     },
   };
@@ -131,6 +169,10 @@ export function createMfaService(api: MfaApi, options = { emailAvailable: true }
 export function mfaErrorMessage(error: unknown): string {
   const name = error && typeof error === 'object' && 'name' in error ? error.name : undefined;
   switch (name) {
+    case 'SmsMfaUnavailable':
+      return 'この環境では SMS MFA が有効ではありません。';
+    case 'UnverifiedMfaPhone':
+      return '電話番号を確認してから SMS MFA を有効にしてください。';
     case 'EmailMfaUnavailable':
       return 'この環境ではメール MFA が有効ではありません。';
     case 'UnverifiedMfaEmail':
@@ -138,7 +180,7 @@ export function mfaErrorMessage(error: unknown): string {
     case 'InvalidMfaPreference':
       return '有効な方式を選択してください。ログイン時の選択には2方式の有効化が必要です。';
     case 'ExpiredCodeException':
-      return 'コードの期限が切れました。メールアドレスの確認コードを再度送信してください。';
+      return 'コードの期限が切れました。連絡先の確認コードを再度送信してください。';
     case 'InvalidTotpCode':
       return '半角数字6桁のコードを入力してください。';
     case 'CodeMismatchException':

@@ -104,3 +104,102 @@ def test_invalid_adapter_context_fails_closed(monkeypatch, context):
     with pytest.raises(HTTPException) as error:
         current_device_username(request)
     assert error.value.status_code == 401
+
+
+DEVICE_KEY = "ap-northeast-1_00000000-0000-0000-0000-000000000001"
+
+
+def test_device_mutations_use_only_the_verified_user():
+    aws = Mock()
+    repository = DeviceRepository(aws, "pool")
+    repository.untrust_device("self", DEVICE_KEY)
+    aws.admin_update_device_status.assert_called_once_with(
+        UserPoolId="pool",
+        Username="self",
+        DeviceKey=DEVICE_KEY,
+        DeviceRememberedStatus="not_remembered",
+    )
+    aws.admin_forget_device.assert_not_called()
+    repository.delete_device("self", DEVICE_KEY)
+    aws.admin_forget_device.assert_called_once_with(
+        UserPoolId="pool", Username="self", DeviceKey=DEVICE_KEY
+    )
+
+
+@pytest.mark.parametrize(
+    "operation,method", [("untrust", "post"), ("delete", "delete")]
+)
+def test_device_mutation_requires_authentication(monkeypatch, operation, method):
+    monkeypatch.setenv("USE_MOCK_COGNITO", "1")
+    client = TestClient(app)
+    path = f"/api/me/devices/{DEVICE_KEY}" + (
+        "/untrust" if operation == "untrust" else ""
+    )
+    assert getattr(client, method)(path).status_code == 401
+
+
+@pytest.mark.parametrize(
+    "operation,method", [("untrust", "post"), ("delete", "delete")]
+)
+def test_mutation_endpoint_is_self_only_and_hides_provider_errors(
+    monkeypatch, operation, method
+):
+    from botocore.exceptions import ClientError
+    from fastapi import FastAPI
+
+    from app.devices import router
+
+    monkeypatch.setenv("USE_MOCK_COGNITO", "0")
+    monkeypatch.setenv("AWS_LAMBDA_FUNCTION_NAME", "test")
+    repo = Mock()
+    monkeypatch.setattr("app.devices.get_device_repository", lambda: repo)
+    application = FastAPI()
+    application.include_router(router)
+    client = TestClient(
+        application,
+        headers={
+            "x-amzn-request-context": '{"authorizer":{"jwt":{"claims":{"sub":"own-sub","cognito:username":"own-user"}}}}'
+        },
+    )
+    path = f"/api/me/devices/{DEVICE_KEY}" + (
+        "/untrust" if operation == "untrust" else ""
+    )
+    target = getattr(
+        repo, "untrust_device" if operation == "untrust" else "delete_device"
+    )
+    response = getattr(client, method)(path + "?username=victim")
+    assert response.status_code == 204
+    assert response.headers["cache-control"] == "no-store"
+    target.assert_called_once_with("own-user", DEVICE_KEY)
+    target.side_effect = ClientError(
+        {"Error": {"Code": "ResourceNotFoundException", "Message": "private details"}},
+        "AdminForgetDevice",
+    )
+    response = getattr(client, method)(path)
+    assert response.status_code == 404
+    assert "private details" not in response.text
+    target.side_effect = ClientError(
+        {"Error": {"Code": "AccessDeniedException", "Message": "private details"}},
+        "AdminForgetDevice",
+    )
+    response = getattr(client, method)(path)
+    assert response.status_code == 502
+    assert "private details" not in response.text
+    assert (
+        getattr(client, method)(path.replace(DEVICE_KEY, "invalid-key")).status_code
+        == 422
+    )
+
+
+def test_access_log_uses_route_template_without_device_key(monkeypatch):
+    monkeypatch.setenv("USE_MOCK_COGNITO", "1")
+    logger = Mock()
+    monkeypatch.setattr("app.main.logger", logger)
+    response = TestClient(app).post(
+        f"/api/me/devices/{DEVICE_KEY}/untrust",
+        headers={"Authorization": "Bearer dummy_mock_token"},
+    )
+    assert response.status_code == 404
+    logged = logger.info.call_args.kwargs["extra"]["http"]["path"]
+    assert logged == "/api/me/devices/{device_key}/untrust"
+    assert DEVICE_KEY not in logged
