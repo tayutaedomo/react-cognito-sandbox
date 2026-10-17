@@ -11,6 +11,7 @@
   - [3. アプリケーション本体のデプロイ](#3-アプリケーション本体のデプロイ)
 - [環境変数 (direnv)](#環境変数-direnv)
 - [MFA POC](#mfa-poc)
+  - [Managed Login v2 のデザイン](#managed-login-v2-のデザイン)
 - [Amplify WAF の切り替え](#amplify-waf-の切り替え)
 
 ## ディレクトリ構成
@@ -69,6 +70,17 @@ Terraform がこの分割を要求するわけではなく、MFA の値を `terr
 `.example` は説明用の命名で自動読込されません。複数の `-var-file` では後に指定した値を優先します。
 設定例を重ねて適用した場合は、次の plan / apply でも同じ設定例を指定するか、MFA の値を `terraform.tfvars` に反映します。
 設定例を省略すると、環境ファイルに残っている MFA 方針へ戻す差分が出る場合があります。
+
+### Managed Login v2 のデザイン
+
+`app/managed-login-v2-settings.json` はアプリと揃えた背景・文字・ボタン・フォームの色を定義し、`app/logo.jpg` をログインフォームのロゴに使います。
+Terraform の `aws_cognito_user_pool_ui_customization` は classic 専用のため、v2 のスタイルは次のスクリプトで Cognito に適用します。
+
+```bash
+terraform/app/scripts/apply-managed-login-branding.sh
+```
+
+スクリプトは Terraform state から User Pool とアプリクライアントを取得し、そのクライアントに割り当て済みの v2 スタイルを更新します。AWS CLI と `jq`、認証済みの `tayutae` プロファイルが必要です。別のプロファイルやリージョンは `AWS_PROFILE`、`AWS_REGION` で指定できます。
 
 TOTP 必須の plan は `app/` で実行します。User Pool 全体に適用されます。
 

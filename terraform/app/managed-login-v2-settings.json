@@ -1,0 +1,84 @@
+{
+  "categories": {
+    "global": {
+      "colorSchemeMode": "LIGHT",
+      "spacingDensity": "REGULAR"
+    }
+  },
+  "components": {
+    "pageBackground": {
+      "image": {
+        "enabled": false
+      },
+      "lightMode": {
+        "color": "f4f6fbff"
+      }
+    },
+    "pageText": {
+      "lightMode": {
+        "bodyColor": "25344bff",
+        "headingColor": "17243bff",
+        "descriptionColor": "5e6c82ff"
+      }
+    },
+    "form": {
+      "lightMode": {
+        "backgroundColor": "ffffffff",
+        "borderColor": "dce3eeff"
+      },
+      "borderRadius": 12,
+      "backgroundImage": {
+        "enabled": false
+      },
+      "logo": {
+        "location": "CENTER",
+        "position": "TOP",
+        "enabled": true,
+        "formInclusion": "IN"
+      }
+    },
+    "primaryButton": {
+      "lightMode": {
+        "defaults": {
+          "backgroundColor": "2459c7ff",
+          "textColor": "ffffffff"
+        },
+        "hover": {
+          "backgroundColor": "1948adff",
+          "textColor": "ffffffff"
+        },
+        "active": {
+          "backgroundColor": "1948adff",
+          "textColor": "ffffffff"
+        }
+      }
+    }
+  },
+  "componentClasses": {
+    "input": {
+      "lightMode": {
+        "defaults": {
+          "backgroundColor": "ffffffff",
+          "borderColor": "b9c6d7ff"
+        },
+        "placeholderColor": "8996a8ff"
+      },
+      "borderRadius": 8
+    },
+    "inputLabel": {
+      "lightMode": {
+        "textColor": "314158ff"
+      }
+    },
+    "link": {
+      "lightMode": {
+        "defaults": {
+          "textColor": "2459c7ff"
+        },
+        "hover": {
+          "textColor": "1948adff"
+        }
+      }
+    }
+  }
+}
