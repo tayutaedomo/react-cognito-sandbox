@@ -18,7 +18,7 @@ BRANDING_ID="$(AWS_PROFILE="$PROFILE" aws cognito-idp describe-managed-login-bra
 REQUEST_FILE="$(mktemp)"
 trap 'rm -f "$REQUEST_FILE"' EXIT
 
-LOGO_BASE64="$(base64 < "$TF_DIR/logo.jpg" | tr -d '\n')"
+LOGO_BASE64="$(base64 < "$TF_DIR/managed-login-v2-logo.svg" | tr -d '\n')"
 jq -n \
   --arg pool_id "$POOL_ID" \
   --arg branding_id "$BRANDING_ID" \
@@ -32,7 +32,7 @@ jq -n \
       Bytes: $logo,
       Category: "FORM_LOGO",
       ColorMode: "LIGHT",
-      Extension: "JPEG"
+      Extension: "SVG"
     }]
   }' > "$REQUEST_FILE"
 

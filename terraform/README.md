@@ -73,7 +73,7 @@ Terraform がこの分割を要求するわけではなく、MFA の値を `terr
 
 ### Managed Login v2 のデザイン
 
-`app/managed-login-v2-settings.json` はアプリと揃えた背景・文字・ボタン・フォームの色を定義し、`app/logo.jpg` をログインフォームのロゴに使います。
+`app/managed-login-v2-settings.json` はアプリと揃えた背景・文字・ボタン・フォームの色を定義し、`app/managed-login-v2-logo.svg` をログインフォームの横長ロゴに使います。
 Terraform の `aws_cognito_user_pool_ui_customization` は classic 専用のため、v2 のスタイルは次のスクリプトで Cognito に適用します。
 
 ```bash
