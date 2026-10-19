@@ -176,8 +176,9 @@ resource "aws_cognito_user_pool_client" "main" {
 
 # Managed Login 画面（Hosted UI）を提供するためのドメイン設定
 resource "aws_cognito_user_pool_domain" "main" {
-  domain       = "${var.project_name}-${random_string.suffix.result}"
-  user_pool_id = aws_cognito_user_pool.main.id
+  domain                = "${var.project_name}-${random_string.suffix.result}"
+  user_pool_id          = aws_cognito_user_pool.main.id
+  managed_login_version = 2
 }
 
 
